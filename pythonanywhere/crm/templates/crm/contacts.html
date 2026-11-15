@@ -33,19 +33,39 @@
   <span class="muted small">{{ page.paginator.count }} shown · {{ uncalled }} not called yet</span>
 </form>
 
+{% if is_admin %}
+<form method="post" id="bulkForm" action="{% url 'crm:bulk_delete' kind %}">{% csrf_token %}
+  <input type="hidden" name="next" value="{{ full_path }}">
+  <input type="hidden" name="filters" value="{{ base_query }}">
+  <input type="hidden" name="all_matching" id="allMatching" value="">
+</form>
+<div class="row" style="margin-bottom:8px">
+  <label style="margin:0;display:flex;gap:6px;align-items:center;color:inherit"><input type="checkbox" id="checkPage" style="width:auto"> Aa page na badha select</label>
+  {% if page.paginator.count > page|length %}<a href="#" id="selectAllMatching" class="small">Badha {{ page.paginator.count }} select karo</a>{% endif %}
+  <span id="selCount" class="small muted"></span>
+  <button type="button" class="btn s d" id="bulkDelete" disabled>Delete selected</button>
+</div>
+{% endif %}
 <div class="card scroll">
   <table>
-    <tr><th>Contact</th><th>Phone</th><th>Status</th>{% if is_admin %}<th>Assigned</th>{% endif %}<th>Last call</th><th></th></tr>
+    {% if kind == 'expo' %}
+    <tr>{% if is_admin %}<th style="width:30px"></th>{% endif %}<th>Company Name</th><th>Company Website</th><th>Company Contact</th><th>Company Email</th><th>Company Address</th><th></th></tr>
+    {% else %}
+    <tr>{% if is_admin %}<th style="width:30px"></th>{% endif %}<th>Contact</th><th>Phone</th><th>Status</th>{% if is_admin %}<th>Assigned</th>{% endif %}<th>Last call</th><th></th></tr>
+    {% endif %}
     {% for c in page %}
     <tr>
+      {% if is_admin %}<td><input type="checkbox" class="rowchk" name="ids" value="{{ c.id }}" form="bulkForm" style="width:auto"></td>{% endif %}
+      {% if kind == 'expo' %}
+      <td><b>{{ c.company|default:"-" }}</b>{% if c.name %}<br><span class="small muted">{{ c.name }}</span>{% endif %}</td>
+      <td>{% if c.website %}<a href="{% if 'http' in c.website|slice:':5' %}{{ c.website }}{% else %}https://{{ c.website }}{% endif %}" target="_blank" rel="noopener noreferrer">{{ c.website }}</a>{% else %}<span class="muted">-</span>{% endif %}</td>
+      <td style="white-space:nowrap">{% if c.phone %}<a href="tel:{{ c.phone|cut:' ' }}"><b>{{ c.phone }}</b></a><br><a class="small" style="color:#16a34a" href="https://wa.me/{{ c.phone|cut:' '|cut:'+' }}" target="_blank" rel="noopener">WhatsApp</a>{% else %}<span class="muted">-</span>{% endif %}</td>
+      <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}<span class="muted">-</span>{% endif %}</td>
+      <td>{{ c.address|default:"-" }}</td>
+      {% else %}
       <td>
-        {% if kind == 'expo' %}
-        <b>{{ c.company|default:c.name|default:"(no name)" }}</b>
-        {% if c.name and c.company %}<br><span class="muted">{{ c.name }}</span>{% endif %}
-        {% else %}
         <b>{{ c.name|default:c.company|default:"(no name)" }}</b>
         {% if c.name and c.company %}<br><span class="muted">{{ c.company }}</span>{% endif %}
-        {% endif %}
         {% if c.address %}<br><span class="small muted">{{ c.address }}</span>{% endif %}
         {% if c.college_name %}<br><span class="muted small">{{ c.college_name }}</span>{% endif %}
         {% if c.website %}<br><a class="small" href="{% if 'http' in c.website|slice:':5' %}{{ c.website }}{% else %}https://{{ c.website }}{% endif %}" target="_blank" rel="noopener noreferrer">{{ c.website }}</a>{% endif %}
@@ -59,13 +79,14 @@
       <td><span class="badge {{ c.badge }}">{{ c.status }}</span>{% if c.follow_up %}<br><span class="small" style="color:#b45309">Follow-up: {{ c.follow_up }}</span>{% endif %}</td>
       {% if is_admin %}<td>{{ c.assignee|default:"Unassigned" }}</td>{% endif %}
       <td class="small muted">{% if c.last_call_at %}{{ c.last_call_at|date:"d M, h:i A" }} ({{ c.call_count }}){% else %}Never called{% endif %}</td>
+      {% endif %}
       <td style="white-space:nowrap;text-align:right">
-        <button class="btn p s" onclick="openCall(this)" data-id="{{ c.id }}" data-name="{{ c.name|default:c.company|default:c.phone }}" data-phone="{{ c.phone }}" data-status="{{ c.status }}" data-follow="{{ c.follow_up|date:'Y-m-d' }}">Log call</button>
+        <button class="btn p s" onclick="openCall(this)" data-id="{{ c.id }}" data-name="{{ c.company|default:c.name|default:c.phone }}" data-phone="{{ c.phone }}" data-status="{{ c.status }}" data-follow="{{ c.follow_up|date:'Y-m-d' }}">Log call</button>
         <button class="btn s" onclick="openEdit(this)" data-id="{{ c.id }}" data-name="{{ c.name }}" data-company="{{ c.company }}" data-phone="{{ c.phone }}" data-email="{{ c.email }}" data-website="{{ c.website }}" data-address="{{ c.address }}" data-college="{{ c.college_name }}" data-status="{{ c.status }}" data-assigned="{{ c.assigned_to_id|default:'' }}" data-follow="{{ c.follow_up|date:'Y-m-d' }}" data-notes="{{ c.notes }}">Edit</button>
         {% if is_admin %}<form method="post" action="{% url 'crm:delete' c.id %}" style="display:inline" onsubmit="return confirm('Delete this contact?')">{% csrf_token %}<input type="hidden" name="next" value="{{ full_path }}"><button class="btn s d">Delete</button></form>{% endif %}
       </td>
     </tr>
-    {% empty %}<tr><td colspan="6" class="muted" style="text-align:center;padding:30px">No contacts found.</td></tr>
+    {% empty %}<tr><td colspan="8" class="muted" style="text-align:center;padding:30px">No contacts found.</td></tr>
     {% endfor %}
   </table>
   {% if page.paginator.num_pages > 1 %}
@@ -284,6 +305,27 @@ if (linkBtn) linkBtn.onclick = async () => {
   }
   linkBtn.disabled = false;
 };
+
+// ---- bulk select / delete
+(function () {
+  const chk = () => [...document.querySelectorAll('.rowchk')];
+  const page = $('checkPage'), btn = $('bulkDelete'), cnt = $('selCount'), all = $('allMatching'), more = $('selectAllMatching');
+  if (!btn) return;
+  const total = {{ page.paginator.count }};
+  function refresh() {
+    const n = all.value === '1' ? total : chk().filter(c => c.checked).length;
+    cnt.textContent = n ? n + ' selected' : '';
+    btn.disabled = !n;
+    btn.textContent = n ? 'Delete selected (' + n + ')' : 'Delete selected';
+  }
+  page.onchange = () => { chk().forEach(c => c.checked = page.checked); all.value = ''; refresh(); };
+  chk().forEach(c => c.onchange = () => { all.value = ''; if (!c.checked) page.checked = false; refresh(); });
+  if (more) more.onclick = e => { e.preventDefault(); all.value = '1'; page.checked = true; chk().forEach(c => c.checked = true); refresh(); };
+  btn.onclick = () => {
+    const n = all.value === '1' ? total : chk().filter(c => c.checked).length;
+    if (n && confirm(n + ' contacts delete karva che? Aa pachhu nahi aave.')) $('bulkForm').submit();
+  };
+})();
 // Photo OCR (runs in the browser; nothing is uploaded)
 const PH = /(?:\+?\s*91[\s-]*)?0?[6-9](?:[\s-]?\d){9}/g;
 function normPhone(s){

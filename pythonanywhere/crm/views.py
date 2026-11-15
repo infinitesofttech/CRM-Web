@@ -14,7 +14,7 @@ from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Q
-from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -120,6 +120,31 @@ def dashboard(request):
 
 
 # ------------------------------------------------------------------ list
+def _filter(qs, p, admin):
+    """Apply the list filters (search, status, employee, college, date, not-called) from a GET/POST dict."""
+    f = {'q': p.get('q', '').strip(), 'status': p.get('status', ''), 'who': p.get('who', '') if admin else '',
+         'college': p.get('college', '').strip(), 'date': p.get('date', ''), 'pending': p.get('pending') == '1'}
+    if f['q']:
+        q = f['q']
+        qs = qs.filter(Q(name__icontains=q) | Q(company__icontains=q) | Q(phone__icontains=q) |
+                       Q(email__icontains=q) | Q(website__icontains=q) | Q(address__icontains=q) |
+                       Q(notes__icontains=q))
+    if f['status']:
+        qs = qs.filter(status=f['status'])
+    if f['who'] == 'none':
+        qs = qs.filter(assigned_to__isnull=True)
+    elif f['who'].isdigit():
+        qs = qs.filter(assigned_to_id=int(f['who']))
+    if f['college']:
+        qs = qs.filter(college_name__iexact=f['college'])
+    d = _parse_date(f['date'])
+    if d:
+        qs = qs.filter(created_at__date=d)
+    if f['pending']:
+        qs = qs.filter(call_count=0)
+    return qs, f
+
+
 @crm_required()
 def contact_list(request, slug):
     kind = SLUG_TO_KIND.get(slug)
@@ -131,31 +156,8 @@ def contact_list(request, slug):
         services.sync_website_leads()
 
     base = _scope(request, Contact.objects.filter(kind=kind))
-    qs = base
-    q = request.GET.get('q', '').strip()
-    status = request.GET.get('status', '')
-    who = request.GET.get('who', '') if admin else ''
-    college = request.GET.get('college', '').strip()
-    date = request.GET.get('date', '')
-    pending = request.GET.get('pending') == '1'
-
-    if q:
-        qs = qs.filter(Q(name__icontains=q) | Q(company__icontains=q) | Q(phone__icontains=q) |
-                       Q(email__icontains=q) | Q(website__icontains=q) | Q(address__icontains=q) |
-                       Q(notes__icontains=q))
-    if status:
-        qs = qs.filter(status=status)
-    if who == 'none':
-        qs = qs.filter(assigned_to__isnull=True)
-    elif who.isdigit():
-        qs = qs.filter(assigned_to_id=int(who))
-    if college:
-        qs = qs.filter(college_name__iexact=college)
-    d = _parse_date(date)
-    if d:
-        qs = qs.filter(created_at__date=d)
-    if pending:
-        qs = qs.filter(call_count=0)
+    qs, f = _filter(base, request.GET, admin)
+    q, status, who, college, date, pending = f['q'], f['status'], f['who'], f['college'], f['date'], f['pending']
 
     page = Paginator(qs.select_related('assigned_to'), 25).get_page(request.GET.get('page'))
     for c in page:
@@ -228,6 +230,27 @@ def contact_delete(request, pk):
     c.delete()
     messages.success(request, 'Deleted.')
     return _back(request, default)
+
+
+@crm_required(admin=True)
+@require_POST
+def bulk_delete(request, kind):
+    """Delete the ticked contacts, or every contact matching the current filters."""
+    _kind_or_404(kind)
+    default = reverse('crm:list', args=[KINDS[kind]['slug']])
+    base = Contact.objects.filter(kind=kind)
+    if request.POST.get('all_matching') == '1':
+        qs, _ = _filter(base, QueryDict(request.POST.get('filters', '')), True)
+    else:
+        ids = [int(i) for i in request.POST.getlist('ids') if i.isdigit()]
+        qs = base.filter(id__in=ids)
+    n = qs.count()
+    if not n:
+        messages.warning(request, 'Koi contact select nathi karyo.')
+        return _back(request, default)
+    qs.delete()
+    messages.success(request, '%d contacts delete thaya.' % n)
+    return redirect(default)
 
 
 # ------------------------------------------------------------------ calls

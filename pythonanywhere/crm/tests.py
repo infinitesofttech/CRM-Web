@@ -213,3 +213,38 @@ class CsvTests(TestCase):
         self.assertIn("'-cmd", row)
         self.assertIn(',+91 70162 30106,', row)
         self.assertNotIn(",',", row)
+
+
+
+class BulkDeleteTests(TestCase):
+    def setUp(self):
+        User.objects.create_user('boss6', password='pw123456', is_staff=True)
+        services.add_contacts('expo', [{'phone': '9%d00000000' % i, 'company': 'Co %d' % i} for i in range(1, 8)])
+        services.add_contacts('intern', [{'phone': '9811111111'}])
+
+    def test_selected_and_all_matching(self):
+        self.client.login(username='boss6', password='pw123456')
+        page = self.client.get('/crm/expo/').content.decode()
+        self.assertIn('Company Website', page)
+        self.assertIn('Company Address', page)
+        self.assertNotIn('<th>Last call</th>', page)
+        ids = list(Contact.objects.filter(kind='expo').values_list('id', flat=True)[:2])
+        self.client.post(reverse('crm:bulk_delete', args=['expo']), {'ids': ids})
+        self.assertEqual(Contact.objects.filter(kind='expo').count(), 5)
+        # all matching a search only
+        self.client.post(reverse('crm:bulk_delete', args=['expo']), {'all_matching': '1', 'filters': 'q=Co+3'})
+        self.assertEqual(Contact.objects.filter(kind='expo').count(), 4)
+        # all matching, no filter -> only this kind
+        self.client.post(reverse('crm:bulk_delete', args=['expo']), {'all_matching': '1', 'filters': ''})
+        self.assertEqual(Contact.objects.filter(kind='expo').count(), 0)
+        self.assertEqual(Contact.objects.filter(kind='intern').count(), 1)
+        # cannot delete other kind's ids through expo
+        iid = Contact.objects.get(kind='intern').id
+        self.client.post(reverse('crm:bulk_delete', args=['expo']), {'ids': [iid]})
+        self.assertEqual(Contact.objects.filter(kind='intern').count(), 1)
+
+    def test_employee_forbidden(self):
+        services.create_employee('e6', 'E6', 'secret1')
+        self.client.login(username='e6', password='secret1')
+        self.assertEqual(self.client.post(reverse('crm:bulk_delete', args=['expo']), {'all_matching': '1'}).status_code, 403)
+        self.assertEqual(Contact.objects.filter(kind='expo').count(), 7)
