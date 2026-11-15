@@ -139,3 +139,13 @@ class ExtraViewTests(TestCase):
         self.assertEqual(self.client.post('/crm/logout/').status_code, 302)
         r = self.client.post('/crm/login/', {'username': 'ravi', 'password': 'bad'})
         self.assertContains(r, 'Wrong username or password')
+
+
+class NamesOnlyTests(TestCase):
+    def test_names_only_import(self):
+        User.objects.create_user('boss2', password='pw123456', is_staff=True)
+        self.client.login(username='boss2', password='pw123456')
+        self.client.post(reverse('crm:import', args=['expo']), {'text': 'Alpha Ltd\nBeta Co\n\n', 'names_only': '1', 'source': 'IIF'})
+        self.assertEqual(Contact.objects.filter(kind='expo', phone='').count(), 2)
+        r = self.client.get('/crm/expo/')
+        self.assertContains(r, 'lubindiaexpo.com/floor-plan')

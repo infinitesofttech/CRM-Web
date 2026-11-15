@@ -257,11 +257,16 @@ def call_history(request, pk):
 @require_POST
 def import_view(request, kind):
     _kind_or_404(kind)
-    rows = services.parse_lines(request.POST.get('text', ''))
+    text = request.POST.get('text', '')
+    if request.POST.get('names_only') == '1':
+        # one company name per line, phone numbers can be added later
+        rows = [{'company': ln.strip()[:160]} for ln in text.splitlines() if ln.strip()]
+    else:
+        rows = services.parse_lines(text)
     college = request.POST.get('college_name', '').strip()
     source = request.POST.get('source', '').strip() or {'intern': 'College group', 'expo': 'Expo', 'lead': 'Import'}[kind]
     if not rows:
-        messages.warning(request, 'Koi valid mobile number maryo nahi.')
+        messages.warning(request, 'Koi valid mobile number / company maryo nahi.')
     else:
         made, skipped = services.add_contacts(kind, rows, source=source, college=college)
         messages.success(request, '%d added, %d skipped (duplicate / invalid). Have "Divide calls" use karo.' % (made, skipped))

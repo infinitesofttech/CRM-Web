@@ -123,6 +123,20 @@
     <input type="file" id="imgs" accept="image/*" multiple style="margin-top:6px">
     <div class="row" style="margin-top:6px"><button type="button" class="btn s" id="ocrBtn">Detect numbers</button><span id="ocrStatus" class="small muted"></span></div>
   </div>
+  {% if kind == 'expo' %}
+  <div style="background:var(--soft);border-radius:10px;padding:10px;margin-top:8px">
+    <b>Expo website thi list kem lavvi</b>
+    <ol class="small" style="margin:6px 0 6px 18px;padding:0">
+      <li><a href="https://www.lubindiaexpo.com/floor-plan" target="_blank" rel="noopener">lubindiaexpo.com/floor-plan</a> kholo, list load thava do.</li>
+      <li>Keyboard ma <b>F12</b> dabavo, <b>Console</b> tab ma niche no code paste kari Enter karo (chrome "allow pasting" lakhva kahe to te lakhi Enter).</li>
+      <li>List copy thai jase. Ahi niche box ma <b>Ctrl+V</b> karo ane Import dabavo.</li>
+    </ol>
+    <textarea id="snippet" readonly rows="3" style="font:11px monospace">(async()=>{const r=await fetch('https://api.lubindiaexpo.com/api/front/stalls');const j=await r.json();const out=[];const w=o=>{if(Array.isArray(o))o.forEach(w);else if(o&&typeof o==='object'){const e=Object.entries(o);const f=re=>{const x=e.find(([k,v])=>re.test(k)&&(typeof v==='string'||typeof v==='number')&&v!=='');return x?x[1]:''};const ph=f(/phone|mobile|contact|whatsapp/i);if(ph)out.push([f(/company|firm|business|org|brand|exhibitor/i),f(/^name$|person|owner/i),ph,f(/web|site|url/i),f(/mail/i)].join(', '));e.forEach(([k,v])=>typeof v==='object'&&w(v))}};w(j);const t=out.length?out.join('
+'):JSON.stringify(j);copy(t);console.log((out.length||'No')+' rows with phone copied')})()</textarea>
+    <button type="button" class="btn s" style="margin-top:6px" onclick="snippet.select();document.execCommand('copy');this.textContent='Copied'">Copy code</button>
+  </div>
+  <label style="display:flex;gap:8px;align-items:center;color:inherit"><input type="checkbox" name="names_only" value="1" style="width:auto"> Fakt company names (ek line ma ek naam, number pachhi umerisu)</label>
+  {% endif %}
   <label>Numbers / list (OCR result lands here - or paste directly){% if kind == 'expo' %}. Format: Company, Name, Mobile, Website, Email{% endif %}</label>
   <textarea name="text" id="bulkText" rows="7" placeholder="+91 98242 26405&#10;ABC Industries, Rajesh Shah, 94275 70993, abc.in"></textarea>
   <div class="row"><div style="flex:1"><label>{% if kind == 'intern' %}College (optional){% else %}Source label{% endif %}</label>
