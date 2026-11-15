@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #2b44ff;
+  --color-brand-600: #1f35e0;
+  --color-ink: #0b1026;
+  --color-line: #e6e9f4;
+  --color-soft: #f5f7fd;
+}
+
+body { background: var(--color-soft); color: var(--color-ink); font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+.btn-primary, .btn-ghost, .btn-danger { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50; }
+.btn-primary { @apply bg-brand text-white hover:bg-brand-600; }
+.btn-ghost { @apply border border-line bg-white hover:bg-soft; }
+.btn-danger { @apply border border-red-200 bg-white text-red-600 hover:bg-red-50; }
+.input { @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20; }
+.card { @apply rounded-xl border border-line bg-white; }
