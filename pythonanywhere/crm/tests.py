@@ -263,3 +263,16 @@ class RefreshFromLinkTests(TestCase):
         services.upsert_rows('expo', [{'company': '', 'phone': '7016230106', 'website': ''}])
         c.refresh_from_db()
         self.assertEqual(c.website, 'wdwil.com')
+
+
+
+class LandlineTests(TestCase):
+    def test_landline(self):
+        self.assertEqual(services.landline('02827-287554'), '02827-287554')
+        self.assertEqual(services.landline('02827 287554'), '02827-287554')
+        self.assertEqual(services.landline('0281-2226445'), '0281-2226445')
+        self.assertEqual(services.landline('12345'), '')
+        self.assertEqual(services.landline('98242 26405'), '')
+        self.assertEqual(services.upsert_rows('lead', [{'company': 'Kawa', 'phone': '02827-287554'}])[0], 1)
+        self.assertEqual(services.upsert_rows('lead', [{'company': 'Kawa', 'phone': '02827 287554'}])[0], 0)
+        self.assertEqual(Contact.objects.get(company='Kawa').phone, '02827-287554')

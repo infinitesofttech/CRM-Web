@@ -25,6 +25,19 @@ def normalize_phone(raw):
     return ''
 
 
+def landline(raw):
+    """Indian landline with STD code, e.g. 02827-287554 / 0281 2226445 -> '02827-287554' / '0281-2226445'."""
+    raw = (raw or '').strip()
+    d = re.sub(r'\D', '', raw)
+    if d.startswith('91') and len(d) == 12:
+        d = '0' + d[2:]
+    if not (len(d) == 11 and d.startswith('0') and d[1] in '1234578'):
+        return ''
+    m = re.match(r'^\s*(?:\+?91[\s-]*)?0?(\d{2,4})[\s-]+\d', raw)
+    std = ('0' + m.group(1)) if m else d[:5]
+    return '%s-%s' % (std, d[len(std):]) if d.startswith(std) else d
+
+
 def extract_numbers(text):
     out = []
     for m in PHONE_RE.finditer(text or ''):
@@ -235,7 +248,7 @@ def upsert_rows(kind, items, source='Import'):
     for it in items:
         clean = {f: str(it.get(f) or '').strip()[:n] for f, n in UPSERT_LIMITS.items()}
         notes = str(it.get('notes') or '').strip()[:1000]
-        phone = normalize_phone(str(it.get('phone') or ''))
+        phone = normalize_phone(str(it.get('phone') or '')) or landline(str(it.get('phone') or ''))
         if not phone and not clean['company']:
             skipped += 1
             continue

@@ -187,9 +187,9 @@ def contact_save(request, kind):
     f = request.POST
     default = reverse('crm:list', args=[KINDS[kind]['slug']])
     raw_phone = f.get('phone', '').strip()
-    phone = services.normalize_phone(raw_phone)
+    phone = services.normalize_phone(raw_phone) or services.landline(raw_phone)
     if raw_phone and not phone:
-        messages.error(request, 'Valid 10 digit mobile number lakho.')
+        messages.error(request, 'Valid 10 digit mobile athva STD landline number lakho.')
         return _back(request, default)
     pk = f.get('id')
     if pk:

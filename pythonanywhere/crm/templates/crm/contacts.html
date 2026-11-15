@@ -64,7 +64,7 @@
       {% if kind == 'expo' %}
       <td><b>{{ c.company|default:"-" }}</b>{% if c.name %}<br><span class="small muted">{{ c.name }}</span>{% endif %}</td>
       <td>{% if c.website %}<a href="{% if 'http' in c.website|slice:':5' %}{{ c.website }}{% else %}https://{{ c.website }}{% endif %}" target="_blank" rel="noopener noreferrer">{{ c.website }}</a>{% else %}<span class="muted">-</span>{% endif %}</td>
-      <td style="white-space:nowrap">{% if c.phone %}<a href="tel:{{ c.phone|cut:' ' }}"><b>{{ c.phone }}</b></a><br><a class="small wa" href="https://wa.me/{{ c.phone|cut:' '|cut:'+' }}" target="_blank" rel="noopener">WhatsApp</a>{% else %}<span class="muted">-</span>{% endif %}</td>
+      <td style="white-space:nowrap">{% if c.phone %}<a href="tel:{{ c.phone|cut:' ' }}"><b>{{ c.phone }}</b></a>{% if '+91' in c.phone %}<br><a class="small wa" href="https://wa.me/{{ c.phone|cut:' '|cut:'+' }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}{% else %}<span class="muted">-</span>{% endif %}</td>
       <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}<span class="muted">-</span>{% endif %}</td>
       <td>{{ c.address|default:"-" }}</td>
       {% else %}
@@ -78,7 +78,7 @@
       </td>
       <td style="white-space:nowrap">
         {% if c.phone %}<a href="tel:{{ c.phone|cut:' ' }}"><b>{{ c.phone }}</b></a>
-        <a class="small wa" href="https://wa.me/{{ c.phone|cut:' '|cut:'+' }}" target="_blank" rel="noopener">WhatsApp</a>{% else %}-{% endif %}
+        {% if '+91' in c.phone %}<a class="small wa" href="https://wa.me/{{ c.phone|cut:' '|cut:'+' }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}{% else %}-{% endif %}
         {% if c.email %}<br><span class="small muted">{{ c.email }}</span>{% endif %}
       </td>
       <td><span class="badge {{ c.badge }}">{{ c.status }}</span>{% if c.follow_up %}<br><span class="small" style="color:#b45309">Follow-up: {{ c.follow_up }}</span>{% endif %}</td>
