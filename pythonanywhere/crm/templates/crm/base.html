@@ -247,10 +247,14 @@
   if (top) { const f = () => top.classList.toggle('scrolled', scrollY > 4); addEventListener('scroll', f, {passive: true}); f(); }
   // scroll reveal
   const els = document.querySelectorAll('[data-reveal]');
+  const show = el => el.classList.add('in');
+  // anything already on screen shows right away (never wait for a scroll)
+  els.forEach(el => { if (el.getBoundingClientRect().top < innerHeight) show(el); });
   if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), {threshold: .12, rootMargin: '0px 0px -40px 0px'});
-    els.forEach(el => io.observe(el));
-  } else els.forEach(el => el.classList.add('in'));
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } }), {threshold: 0});
+    els.forEach(el => { if (!el.classList.contains('in')) io.observe(el); });
+  } else els.forEach(show);
+  setTimeout(() => els.forEach(show), 1200);  // safety net: content is never left hidden
   // count-up numbers
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.querySelectorAll('[data-count]').forEach(el => {

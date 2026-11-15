@@ -23,7 +23,7 @@
 </div>
 {% endif %}
 
-<form method="get" class="row toolbar" data-reveal style="--d:1">
+<form method="get" class="row toolbar">
   <div style="position:relative;width:260px"><svg class="i" style="position:absolute;left:11px;top:11px;color:var(--muted)"><use href="#i-search"/></svg><input name="q" value="{{ q }}" placeholder="Search name, company, number..." style="padding-left:36px"></div>
   <select name="status" style="width:170px"><option value="">All statuses</option>
     {% for s in cfg.statuses %}<option {% if s == status %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
@@ -51,7 +51,7 @@
   <button type="button" class="btn s d" id="bulkDelete" disabled><svg class="i"><use href="#i-trash"/></svg>Delete selected</button>
 </div>
 {% endif %}
-<div class="card scroll" data-reveal style="--d:2">
+<div class="card scroll">
   <table>
     {% if kind == 'expo' %}
     <tr>{% if is_admin %}<th style="width:30px"></th>{% endif %}<th>Company Name</th><th>Company Website</th><th>Company Contact</th><th>Company Email</th><th>Company Address</th><th></th></tr>
