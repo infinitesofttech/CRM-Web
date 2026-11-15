@@ -1,8 +1,9 @@
 import { normalizePhone } from "./phone";
 
-export type Parsed = { name: string; company: string; phone: string; email: string };
+export type Parsed = { name: string; company: string; phone: string; email: string; website: string };
 
 const PHONE_RE = /(?:\+?\s*91[\s-]*)?0?[6-9](?:[\s-]?\d){9}/g;
+const SITE_RE = /(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|in|co\.in|org|net|biz|info)(?:\/[^\s,;|]*)?/i;
 const EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/;
 
 /** Pull every valid Indian mobile number out of free text (OCR output, pasted text, web page text). */
@@ -24,8 +25,10 @@ export function parseLines(text: string): Parsed[] {
     const phones = extractNumbers(line);
     if (!phones.length) continue;
     const email = line.match(EMAIL_RE)?.[0] ?? "";
-    const rest = line
-      .replace(EMAIL_RE, " ")
+    const noEmail = line.replace(EMAIL_RE, " ");
+    const website = noEmail.match(SITE_RE)?.[0] ?? "";
+    const rest = noEmail
+      .replace(SITE_RE, " ")
       .replace(PHONE_RE, " ")
       .split(/[,\t|;]/)
       .map((s) => s.replace(/\s+/g, " ").trim())
@@ -33,7 +36,7 @@ export function parseLines(text: string): Parsed[] {
     for (const phone of phones) {
       if (seen.has(phone)) continue;
       seen.add(phone);
-      rows.push({ company: rest[0] ?? "", name: rest[1] ?? "", phone, email });
+      rows.push({ company: rest[0] ?? "", name: rest[1] ?? "", phone, email, website });
     }
   }
   return rows;

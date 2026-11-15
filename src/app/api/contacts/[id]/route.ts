@@ -24,6 +24,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
   if (typeof b.name === "string") next.name = b.name.trim().slice(0, 120);
   if (typeof b.company === "string") next.company = b.company.trim().slice(0, 160);
   if (typeof b.email === "string") next.email = b.email.trim().slice(0, 160);
+  if (typeof b.website === "string") next.website = b.website.trim().slice(0, 200);
   if (typeof b.notes === "string") next.notes = b.notes.slice(0, 2000);
   if (typeof b.followUp === "string") next.followUp = b.followUp.slice(0, 10);
   if (typeof b.phone === "string") {

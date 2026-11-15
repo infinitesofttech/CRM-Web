@@ -13,7 +13,7 @@ export async function listContacts(session: Session, kind?: Kind): Promise<Conta
 }
 
 export type NewContact = Partial<
-  Pick<Contact, "name" | "company" | "phone" | "email" | "source" | "notes" | "status" | "assignedTo">
+  Pick<Contact, "name" | "company" | "phone" | "email" | "website" | "source" | "notes" | "status" | "assignedTo">
 >;
 
 /** Inserts contacts, skipping invalid or duplicate phone numbers inside the same kind. */
@@ -37,6 +37,7 @@ export async function addContacts(kind: Kind, items: NewContact[], defaultSource
       company: (it.company ?? "").trim().slice(0, 160),
       phone,
       email: (it.email ?? "").trim().slice(0, 160),
+      website: (it.website ?? "").trim().slice(0, 200),
       source: (it.source ?? defaultSource).slice(0, 80),
       status: it.status && KINDS[kind].statuses.includes(it.status) ? it.status : "New",
       assignedTo: it.assignedTo ?? null,

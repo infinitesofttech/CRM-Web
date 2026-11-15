@@ -35,7 +35,7 @@ export default function ImportModal({ kind, onClose, onDone }: { kind: Kind; onC
         extractNumbers(data.text).forEach((n) => all.add(n));
       }
       await worker.terminate();
-      setResult([...all].map((phone) => ({ phone, name: "", company: "", email: "" })), "Check the numbers below - OCR can misread a digit.");
+      setResult([...all].map((phone) => ({ phone, name: "", company: "", email: "", website: "" })), "Check the numbers below - OCR can misread a digit.");
     } catch {
       setNote("Could not read the image. Try a clearer screenshot or use Paste.");
     }
@@ -85,7 +85,7 @@ export default function ImportModal({ kind, onClose, onDone }: { kind: Kind; onC
         )}
         {tab === "paste" && (
           <div className="space-y-2">
-            <p className="text-sm text-slate-600">One per line: Company, Name, Mobile, Email (any order, only the mobile is required).</p>
+            <p className="text-sm text-slate-600">One per line: Company, Name, Mobile, Website, Email (any order, only the mobile is required).</p>
             <textarea className="input" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={"ABC Industries, Rajesh Shah, 98242 26405\n+91 94275 70993"} />
             <button className="btn-ghost" onClick={() => setResult(parseLines(text))}>Find numbers</button>
           </div>
@@ -112,7 +112,7 @@ export default function ImportModal({ kind, onClose, onDone }: { kind: Kind; onC
                 <label key={i} className="flex items-center gap-2 border-b border-line px-3 py-1.5 text-sm last:border-0">
                   <input type="checkbox" checked={selected.has(i)} onChange={(e) => { const s = new Set(selected); if (e.target.checked) s.add(i); else s.delete(i); setSelected(s); }} />
                   <span className="font-medium">{r.phone}</span>
-                  <span className="truncate text-slate-500">{[r.company, r.name, r.email].filter(Boolean).join(" - ")}</span>
+                  <span className="truncate text-slate-500">{[r.company, r.name, r.website, r.email].filter(Boolean).join(" - ")}</span>
                 </label>
               ))}
             </div>

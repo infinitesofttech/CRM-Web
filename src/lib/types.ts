@@ -34,6 +34,7 @@ export type Contact = {
   company: string;
   phone: string;
   email: string;
+  website: string;
   source: string;
   status: string;
   assignedTo: string | null;

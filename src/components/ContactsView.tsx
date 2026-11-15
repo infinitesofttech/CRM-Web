@@ -50,7 +50,7 @@ export default function ContactsView({ kind, role }: { kind: Kind; role: "admin"
       (c) =>
         (!status || c.status === status) &&
         (!who || (who === "none" ? !c.assignedTo : c.assignedTo === who)) &&
-        (!s || [c.name, c.company, c.phone, c.email, c.notes].some((v) => v.toLowerCase().includes(s))),
+        (!s || [c.name, c.company, c.phone, c.email, c.website ?? "", c.notes].some((v) => v.toLowerCase().includes(s))),
     );
   }, [contacts, q, status, who]);
 
@@ -129,6 +129,11 @@ export default function ContactsView({ kind, role }: { kind: Kind; role: "admin"
                   <td className="p-3">
                     <p className="font-medium">{c.name || c.company || "(no name)"}</p>
                     {c.name && c.company && <p className="text-slate-500">{c.company}</p>}
+                    {c.website && (
+                      <a className="text-xs text-brand" href={/^https?:/i.test(c.website) ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer">
+                        {c.website.replace(/^https?:\/\//i, "")}
+                      </a>
+                    )}
                     <p className="text-xs text-slate-400">{c.source}</p>
                   </td>
                   <td className="whitespace-nowrap p-3">
@@ -335,6 +340,7 @@ function EditModal({
         <input name="name" className="input" placeholder="Name" defaultValue={contact?.name} />
         <input name="company" className="input" placeholder={kind === "intern" ? "College" : "Company"} defaultValue={contact?.company} />
         <input name="phone" className="input" placeholder="Mobile number" defaultValue={contact?.phone} />
+        <input name="website" className="input" placeholder="Website" defaultValue={contact?.website} />
         <input name="email" type="email" className="input" placeholder="Email" defaultValue={contact?.email} />
         {contact && (
           <select name="status" className="input" defaultValue={contact.status}>
