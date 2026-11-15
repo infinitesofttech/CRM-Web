@@ -1,0 +1,32 @@
+{% extends 'crm/base.html' %}
+{% block title %}Employees{% endblock %}
+{% block content %}
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start">
+  <div class="card" style="grid-column:span 2;min-width:0">
+    <h3 style="margin:0;padding:14px 16px;border-bottom:1px solid var(--line)">Employees ({{ rows|length }})</h3>
+    <div class="scroll"><table>
+      <tr><th>Name</th><th>Login</th><th>Assigned</th><th>Called</th><th></th></tr>
+      {% for r in rows %}<tr>
+        <td><b>{{ r.name }}</b></td><td>{{ r.u.username }}</td><td>{{ r.total }}</td><td>{{ r.called }}</td>
+        <td>
+          <form method="post" class="row" style="flex-wrap:nowrap">{% csrf_token %}
+            <input type="hidden" name="id" value="{{ r.u.id }}">
+            <input name="password" type="password" placeholder="New password" minlength="6" style="width:140px">
+            <button name="action" value="password" class="btn s">Set</button>
+            <button name="action" value="remove" class="btn s d" onclick="return confirm('Remove {{ r.name|escapejs }}? Their contacts become unassigned.')">Remove</button>
+          </form>
+        </td>
+      </tr>{% empty %}<tr><td colspan="5" class="muted">No employees yet.</td></tr>{% endfor %}
+    </table></div>
+  </div>
+  <form method="post" class="card pad">{% csrf_token %}
+    <h3 style="margin:0 0 4px">Add employee</h3>
+    <input type="hidden" name="action" value="create">
+    <label>Full name</label><input name="name" required>
+    <label>Username (login)</label><input name="username" required>
+    <label>Password (min 6)</label><input name="password" type="password" minlength="6" required>
+    <button class="btn p" style="margin-top:12px">Add employee</button>
+    <p class="small muted">Employees see only the contacts assigned to them and can log calls and update status.</p>
+  </form>
+</div>
+{% endblock %}

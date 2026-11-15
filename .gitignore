@@ -9,3 +9,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+backups/
+_scratch/

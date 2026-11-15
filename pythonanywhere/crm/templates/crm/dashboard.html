@@ -1,0 +1,44 @@
+{% extends 'crm/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="grid g4" style="margin-bottom:16px">
+  <div class="card pad stat"><span class="muted">{% if is_admin %}Total contacts{% else %}My contacts{% endif %}</span><b>{{ total }}</b></div>
+  <div class="card pad stat"><span class="muted">Calls today</span><b>{{ calls_today }}</b></div>
+  <div class="card pad stat"><span class="muted">Follow-ups due</span><b>{{ due_count }}</b></div>
+  <div class="card pad stat"><span class="muted">Not called yet</span><b>{{ uncalled }}</b></div>
+</div>
+
+<div class="grid g3" style="margin-bottom:16px">
+  {% for c in cards %}
+  <a class="card pad" href="{% url 'crm:list' c.slug %}" style="color:inherit">
+    <div class="row" style="justify-content:space-between"><b>{{ c.title }}</b><b style="font-size:24px">{{ c.total }}</b></div>
+    <table style="margin-top:8px">
+      {% for s, n in c.rows %}<tr><td style="padding:3px 0;border:0" class="muted">{{ s }}</td><td style="padding:3px 0;border:0;text-align:right"><b>{{ n }}</b></td></tr>{% endfor %}
+    </table>
+  </a>
+  {% endfor %}
+</div>
+
+{% if due %}
+<div class="card" style="margin-bottom:16px">
+  <h3 style="margin:0;padding:14px 16px;border-bottom:1px solid var(--line)">Follow-ups due</h3>
+  <div class="scroll"><table>
+    {% for c in due %}<tr>
+      <td><b>{{ c.name|default:c.company|default:"(no name)" }}</b><br><span class="small muted">{{ c.get_kind_display }}</span></td>
+      <td>{{ c.phone }}</td><td>{{ c.status }}</td><td class="muted">{{ c.follow_up }}</td>
+    </tr>{% endfor %}
+  </table></div>
+</div>
+{% endif %}
+
+{% if is_admin %}
+<div class="card">
+  <h3 style="margin:0;padding:14px 16px;border-bottom:1px solid var(--line)">Employee workload</h3>
+  <div class="scroll"><table>
+    <tr><th>Employee</th><th>Assigned</th><th>Called</th><th>Pending</th><th>Calls today</th></tr>
+    {% for w in work %}<tr><td><b>{{ w.name }}</b></td><td>{{ w.total }}</td><td>{{ w.called }}</td><td>{{ w.pending }}</td><td>{{ w.today }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="muted">No employees yet - add them in the Employees tab.</td></tr>{% endfor %}
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

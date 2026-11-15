@@ -1,11 +1,14 @@
 # Infinite Soft Tech CRM
 
-Next.js 16 + Tailwind 4 + TypeScript. Leads (clients), Internship (students) and Expo clients with employee call distribution.
+**Live CRM now runs on PythonAnywhere** (Django app `crm` inside the website project):
+`https://infinity3tech.pythonanywhere.com/crm/`
 
-- **Roles**: admin (env `ADMIN_USERNAME` / `ADMIN_PASSWORD`) and employees (created in the Employees tab; they only see contacts assigned to them).
-- **Leads**: add manually, or the website form can POST to `/api/public/lead` with `{ key: LEAD_KEY, name, phone, email, company, message }`.
-- **Internship**: upload WhatsApp-group screenshots (OCR runs in the browser) or paste numbers, then divide calls to employees.
-- **Expo**: paste the expo exhibitor list or a link, then divide calls.
-- **Storage**: Upstash Redis (`KV_REST_API_URL`, `KV_REST_API_TOKEN`) in production; `.data/db.json` locally.
+Source of the live app: [`pythonanywhere/crm/`](pythonanywhere/crm). To deploy, copy that folder to
+`/home/Infinity3Tech/infinitewebsite/mywebsite/crm/`, add `'crm'` to `INSTALLED_APPS`, add
+`path('crm/', include('crm.urls'))` to the project `urls.py`, run `python manage.py migrate crm`, then reload the web app.
+Tests: `python manage.py test crm`.
 
-See `.env.example`. Local: `npm install && npm run dev` (login admin / admin123 in dev only).
+Features: login (admin + employees), dashboard, Leads (website forms sync in automatically), Internship (photo OCR / paste import,
+college filter), Expo (paste import with website), equal call distribution, call log + follow-ups, CSV export.
+
+The Next.js code in `src/` was the earlier Vercel version (the Vercel project has been deleted); it is kept only for reference.

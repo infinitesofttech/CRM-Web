@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}CRM{% endblock %} - Infinite Soft Tech</title>
+  <style>
+    :root{--brand:#2b44ff;--brand2:#1f35e0;--ink:#0b1026;--line:#e6e9f4;--soft:#f5f7fd;--muted:#64708f}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--soft);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    a{color:var(--brand);text-decoration:none}
+    header.top{background:#fff;border-bottom:1px solid var(--line)}
+    .wrap{max-width:1240px;margin:0 auto;padding:0 16px}
+    .bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:10px 0}
+    .brand{font-weight:700;font-size:16px}
+    nav{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+    nav a{padding:6px 12px;border-radius:8px;color:#475069}
+    nav a:hover{background:var(--soft)}
+    nav a.on{background:var(--brand);color:#fff}
+    main.wrap{padding-top:20px;padding-bottom:40px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:12px}
+    .pad{padding:16px}
+    .muted{color:var(--muted)}
+    .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:7px 12px;border-radius:8px;font:inherit;font-weight:500;cursor:pointer}
+    .btn:hover{background:var(--soft)}
+    .btn.p{background:var(--brand);border-color:var(--brand);color:#fff}.btn.p:hover{background:var(--brand2)}
+    .btn.d{color:#dc2626;border-color:#fecaca}
+    .btn.s{padding:4px 9px;font-size:13px}
+    input,select,textarea{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+    input:focus,select:focus,textarea:focus{outline:2px solid #c7d0ff;border-color:var(--brand)}
+    label{display:block;font-size:13px;color:var(--muted);margin-top:8px}
+    .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .row>*{flex:0 1 auto}
+    .grid{display:grid;gap:12px}
+    .g4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+    .g3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+    table{width:100%;border-collapse:collapse}
+    th{background:var(--soft);text-align:left;color:var(--muted);font-weight:600;padding:10px 12px;white-space:nowrap}
+    td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+    .scroll{overflow-x:auto}
+    .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;background:#ede9fe;color:#5b21b6}
+    .b-new{background:#f1f5f9;color:#475569}.b-good{background:#dcfce7;color:#166534}.b-bad{background:#fee2e2;color:#991b1b}
+    .b-info{background:#dbeafe;color:#1e40af}.b-warn{background:#fef3c7;color:#92400e}
+    .msg{padding:10px 14px;border-radius:10px;margin-bottom:10px}
+    .msg.success{background:#dcfce7;color:#166534}.msg.error{background:#fee2e2;color:#991b1b}
+    .msg.warning,.msg.info{background:#fef3c7;color:#92400e}
+    .stat b{display:block;font-size:28px}
+    dialog{border:0;border-radius:14px;padding:0;width:min(560px,94vw);box-shadow:0 20px 60px #0004}
+    dialog::backdrop{background:#0b102666}
+    dialog .in{padding:18px}
+    dialog h2{margin:0 0 6px;font-size:17px}
+    .pager{display:flex;gap:6px;align-items:center;justify-content:center;padding:14px;flex-wrap:wrap}
+    .pill{display:inline-block;padding:3px 10px;border:1px solid var(--line);border-radius:99px;background:#fff;color:var(--ink);font-size:13px}
+    .pill.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .small{font-size:12px}
+    @media(max-width:700px){td,th{padding:8px}}
+  </style>
+</head>
+<body>
+{% if user.is_authenticated %}
+<header class="top"><div class="wrap bar">
+  <span class="brand">Infinite CRM</span>
+  <nav>
+    <a href="{% url 'crm:dashboard' %}" class="{% if active == 'dashboard' %}on{% endif %}">Dashboard</a>
+    <a href="{% url 'crm:list' 'leads' %}" class="{% if active == 'leads' %}on{% endif %}">Leads</a>
+    <a href="{% url 'crm:list' 'internships' %}" class="{% if active == 'internships' %}on{% endif %}">Internship</a>
+    <a href="{% url 'crm:list' 'expo' %}" class="{% if active == 'expo' %}on{% endif %}">Expo</a>
+    {% if is_admin %}<a href="{% url 'crm:employees' %}" class="{% if active == 'employees' %}on{% endif %}">Employees</a>{% endif %}
+  </nav>
+  <span class="muted">{{ user.get_full_name|default:user.username }}</span>
+  <form method="post" action="{% url 'crm:logout' %}">{% csrf_token %}<button class="btn s">Logout</button></form>
+</div></header>
+{% endif %}
+<main class="wrap">
+  {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>
