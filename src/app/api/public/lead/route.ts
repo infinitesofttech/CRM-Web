@@ -2,7 +2,7 @@ import { addContacts } from "@/lib/contacts";
 
 /**
  * Website contact form -> CRM lead.
- * POST { key, name, phone, email, company, message }   (key must equal PUBLIC_LEAD_KEY)
+ * POST { key, name, phone, email, company, message }   (key must equal LEAD_KEY)
  */
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +15,7 @@ export function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  const expected = (process.env.PUBLIC_LEAD_KEY ?? "").trim();
+  const expected = (process.env.LEAD_KEY ?? "").trim();
   if (!expected) return Response.json({ error: "Not enabled" }, { status: 503, headers: cors });
   const b = (await request.json().catch(() => ({}))) as Record<string, string>;
   if (b.key !== expected) return Response.json({ error: "Forbidden" }, { status: 403, headers: cors });
