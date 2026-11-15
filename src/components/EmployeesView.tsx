@@ -1,20 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { PublicEmployee } from "@/lib/types";
 
-export default function EmployeesView() {
-  const [list, setList] = useState<PublicEmployee[]>([]);
+export default function EmployeesView({ initial }: { initial: PublicEmployee[] }) {
+  const [list, setList] = useState<PublicEmployee[]>(initial);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     const r = await fetch("/api/employees");
     if (r.ok) setList((await r.json()).employees);
   }, []);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
 
   async function add(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -17,11 +17,14 @@ const badge: Record<string, string> = {
   "Follow-up": "bg-amber-100 text-amber-800",
 };
 
-export default function ContactsView({ kind, role }: { kind: Kind; role: "admin" | "employee" }) {
+export default function ContactsView({
+  kind, role, initialContacts, initialEmployees,
+}: {
+  kind: Kind; role: "admin" | "employee"; initialContacts: Contact[]; initialEmployees: PublicEmployee[];
+}) {
   const cfg = KINDS[kind];
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [employees, setEmployees] = useState<PublicEmployee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [contacts, setContacts] = useState<Contact[]>(initialContacts);
+  const [employees, setEmployees] = useState<PublicEmployee[]>(initialEmployees);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [who, setWho] = useState("");
@@ -32,15 +35,12 @@ export default function ContactsView({ kind, role }: { kind: Kind; role: "admin"
   const [msg, setMsg] = useState("");
 
   const load = useCallback(async () => {
-    const [c, e] = await Promise.all([fetch(`/api/contacts?kind=${kind}`), fetch("/api/employees")]);
+    const c = await fetch(`/api/contacts?kind=${kind}`);
     if (c.ok) setContacts((await c.json()).contacts);
-    if (e.ok) setEmployees((await e.json()).employees);
-    setLoading(false);
   }, [kind]);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+
+  /** Replace one contact in local state (no full reload needed after a call / edit). */
+  const patch = (c: Contact) => setContacts((list) => list.map((x) => (x.id === c.id ? c : x)));
 
   const empName = (id: string | null) => employees.find((e) => e.id === id)?.name ?? "";
 
@@ -56,8 +56,9 @@ export default function ContactsView({ kind, role }: { kind: Kind; role: "admin"
 
   async function del(c: Contact) {
     if (!confirm("Delete this contact?")) return;
-    await fetch(`/api/contacts/${c.id}`, { method: "DELETE" });
-    load();
+    setContacts((list) => list.filter((x) => x.id !== c.id));
+    const r = await fetch(`/api/contacts/${c.id}`, { method: "DELETE" });
+    if (!r.ok) load();
   }
 
   const notCalled = contacts.filter((c) => !c.calls.length).length;
@@ -188,7 +189,7 @@ export default function ContactsView({ kind, role }: { kind: Kind; role: "admin"
             {!rows.length && (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-slate-500">
-                  {loading ? "Loading..." : "No contacts yet."}
+                  No contacts yet.
                 </td>
               </tr>
             )}
@@ -196,7 +197,7 @@ export default function ContactsView({ kind, role }: { kind: Kind; role: "admin"
         </table>
       </div>
 
-      {calling && <CallModal contact={calling} onClose={() => setCalling(null)} onSaved={() => { setCalling(null); load(); }} />}
+      {calling && <CallModal contact={calling} onClose={() => setCalling(null)} onSaved={(c) => { setCalling(null); if (c) patch(c); else load(); }} />}
       {editing && (
         <EditModal
           kind={kind}
@@ -204,7 +205,7 @@ export default function ContactsView({ kind, role }: { kind: Kind; role: "admin"
           contact={editing === "new" ? null : editing}
           employees={employees}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); }}
+          onSaved={(c) => { setEditing(null); if (c) patch(c); else load(); }}
         />
       )}
       {importing && (
@@ -244,7 +245,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function CallModal({ contact, onClose, onSaved }: { contact: Contact; onClose: () => void; onSaved: () => void }) {
+function CallModal({ contact, onClose, onSaved }: { contact: Contact; onClose: () => void; onSaved: (c?: Contact) => void }) {
   const cfg = KINDS[contact.kind];
   const [outcome, setOutcome] = useState("Connected");
   const [status, setStatus] = useState(contact.status);
@@ -254,12 +255,16 @@ function CallModal({ contact, onClose, onSaved }: { contact: Contact; onClose: (
 
   async function save() {
     setBusy(true);
-    await fetch(`/api/contacts/${contact.id}/call`, {
+    const r = await fetch(`/api/contacts/${contact.id}/call`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ outcome, status, note, followUp }),
     });
-    onSaved();
+    if (!r.ok) {
+      setBusy(false);
+      return alert("Could not save the call. Please try again.");
+    }
+    onSaved((await r.json()).contact);
   }
 
   return (
@@ -317,7 +322,7 @@ function CallModal({ contact, onClose, onSaved }: { contact: Contact; onClose: (
 function EditModal({
   kind, role, contact, employees, onClose, onSaved,
 }: {
-  kind: Kind; role: "admin" | "employee"; contact: Contact | null; employees: PublicEmployee[]; onClose: () => void; onSaved: () => void;
+  kind: Kind; role: "admin" | "employee"; contact: Contact | null; employees: PublicEmployee[]; onClose: () => void; onSaved: (c?: Contact) => void;
 }) {
   const [error, setError] = useState("");
   const cfg = KINDS[kind];
@@ -331,7 +336,7 @@ function EditModal({
     const j = await res.json();
     if (!res.ok) return setError(j.error ?? "Failed");
     if (!contact && !j.created) return setError("Not added - invalid or duplicate number");
-    onSaved();
+    onSaved(contact ? j.contact : undefined);
   }
 
   return (

@@ -14,7 +14,9 @@ const isProd = process.env.NODE_ENV === "production";
 export const storageMode: "redis" | "file" | "memory" = URL_ && TOKEN ? "redis" : isProd ? "memory" : "file";
 
 type Hash = Record<string, string>;
-const mem: Record<string, Hash> = {};
+// Shared across route/page bundles (Next bundles them separately).
+const g = globalThis as unknown as { __crmMem?: Record<string, Hash> };
+const mem: Record<string, Hash> = (g.__crmMem ??= {});
 const FILE = path.join(process.cwd(), ".data", "db.json");
 
 async function redis(commands: unknown[][]): Promise<unknown[]> {
