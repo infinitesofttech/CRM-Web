@@ -25,6 +25,22 @@ def normalize_phone(raw):
     return ''
 
 
+def us_phone(raw):
+    """US/Canada number -> '+1 (415) 555-0100'. Returns '' when it is not a 10-digit NANP number."""
+    d = re.sub(r'\D', '', raw or '')
+    if len(d) == 11 and d.startswith('1'):
+        d = d[1:]
+    if len(d) == 10 and d[0] in '23456789' and d[3] in '23456789':
+        return '+1 (%s) %s-%s' % (d[:3], d[3:6], d[6:])
+    return ''
+
+
+def any_phone(raw, kind):
+    if kind == 'us':
+        return us_phone(raw)
+    return normalize_phone(raw) or landline(raw)
+
+
 def landline(raw):
     """Indian landline with STD code, e.g. 02827-287554 / 0281 2226445 -> '02827-287554' / '0281-2226445'."""
     raw = (raw or '').strip()
@@ -248,7 +264,7 @@ def upsert_rows(kind, items, source='Import'):
     for it in items:
         clean = {f: str(it.get(f) or '').strip()[:n] for f, n in UPSERT_LIMITS.items()}
         notes = str(it.get('notes') or '').strip()[:1000]
-        phone = normalize_phone(str(it.get('phone') or '')) or landline(str(it.get('phone') or ''))
+        phone = any_phone(str(it.get('phone') or ''), kind)
         if not phone and not clean['company']:
             skipped += 1
             continue
@@ -276,7 +292,14 @@ def upsert_rows(kind, items, source='Import'):
             else:
                 skipped += 1
             continue
-        new.append(Contact(kind=kind, phone=phone, source=source[:80], notes=notes, **clean))
+        fu = None
+        try:
+            import datetime as _dt
+            fu = _dt.date.fromisoformat(str(it.get('follow_up') or '')[:10]) if it.get('follow_up') else None
+        except ValueError:
+            fu = None
+        new.append(Contact(kind=kind, phone=phone, source=(str(it.get('source') or '') or source)[:80],
+                           notes=notes, follow_up=fu, **clean))
     if new:
         Contact.objects.bulk_create(new, batch_size=200)
     if changed:

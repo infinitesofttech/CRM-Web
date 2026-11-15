@@ -9,7 +9,7 @@
   <div class="actions">
     <button class="btn" onclick="openEdit()"><svg class="i"><use href="#i-plus"/></svg>Add {{ cfg.singular }}</button>
     {% if is_admin %}
-      {% if kind != 'lead' %}<button class="btn p" onclick="importDlg.showModal()"><svg class="i"><use href="#i-upload"/></svg>Import {% if kind == 'intern' %}image / paste{% else %}expo list{% endif %}</button>{% endif %}
+      {% if kind == 'intern' or kind == 'expo' %}<button class="btn p" onclick="importDlg.showModal()"><svg class="i"><use href="#i-upload"/></svg>Import {% if kind == 'intern' %}image / paste{% else %}expo list{% endif %}</button>{% endif %}
       <button class="btn" onclick="assignDlg.showModal()"><svg class="i"><use href="#i-split"/></svg>Divide calls{% if unassigned %} ({{ unassigned }}){% endif %}</button>
       <a class="btn" href="{% url 'crm:export' kind %}"><svg class="i"><use href="#i-download"/></svg>Export CSV</a>
     {% endif %}
@@ -53,7 +53,9 @@
 {% endif %}
 <div class="card scroll">
   <table>
-    {% if kind == 'expo' %}
+    {% if kind == 'us' %}
+    <tr>{% if is_admin %}<th style="width:30px"></th>{% endif %}<th>Company</th><th>Website</th><th>Contact</th><th>Location</th><th>Why now</th><th>Deadline</th><th></th></tr>
+    {% elif kind == 'expo' %}
     <tr>{% if is_admin %}<th style="width:30px"></th>{% endif %}<th>Company Name</th><th>Company Website</th><th>Company Contact</th><th>Company Email</th><th>Company Address</th><th></th></tr>
     {% else %}
     <tr>{% if is_admin %}<th style="width:30px"></th>{% endif %}<th>Contact</th><th>Phone</th><th>Status</th>{% if is_admin %}<th>Assigned</th>{% endif %}<th>Last call</th><th></th></tr>
@@ -61,7 +63,14 @@
     {% for c in page %}
     <tr class="r" style="--i:{{ forloop.counter }}">
       {% if is_admin %}<td><input type="checkbox" class="rowchk" name="ids" value="{{ c.id }}" form="bulkForm" style="width:auto"></td>{% endif %}
-      {% if kind == 'expo' %}
+      {% if kind == 'us' %}
+      <td><b>{{ c.company|default:c.name|default:"-" }}</b><br><span class="badge {{ c.badge }}" style="margin-top:4px">{{ c.status }}</span><br><span class="small muted">{{ c.source }}</span></td>
+      <td>{% if c.website %}<a href="{% if 'http' in c.website|slice:':5' %}{{ c.website }}{% else %}https://{{ c.website }}{% endif %}" target="_blank" rel="noopener noreferrer">{{ c.website }}</a>{% else %}<span class="muted">-</span>{% endif %}</td>
+      <td style="white-space:nowrap">{% if c.phone %}<a href="tel:{{ c.phone|cut:' '|cut:'('|cut:')'|cut:'-' }}"><b>{{ c.phone }}</b></a><br>{% endif %}{% if c.email %}<a class="small" href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}{% if not c.phone and not c.email %}<span class="muted small">via website</span>{% endif %}</td>
+      <td>{{ c.address|default:"-" }}</td>
+      <td class="small" style="max-width:340px">{{ c.notes|truncatechars:170 }}</td>
+      <td class="small" style="white-space:nowrap">{% if c.follow_up %}<b style="color:var(--warn)">{{ c.follow_up|date:"d M Y" }}</b>{% else %}<span class="muted">-</span>{% endif %}</td>
+      {% elif kind == 'expo' %}
       <td><b>{{ c.company|default:"-" }}</b>{% if c.name %}<br><span class="small muted">{{ c.name }}</span>{% endif %}</td>
       <td>{% if c.website %}<a href="{% if 'http' in c.website|slice:':5' %}{{ c.website }}{% else %}https://{{ c.website }}{% endif %}" target="_blank" rel="noopener noreferrer">{{ c.website }}</a>{% else %}<span class="muted">-</span>{% endif %}</td>
       <td style="white-space:nowrap">{% if c.phone %}<a href="tel:{{ c.phone|cut:' ' }}"><b>{{ c.phone }}</b></a>{% if '+91' in c.phone %}<br><a class="small wa" href="https://wa.me/{{ c.phone|cut:' '|cut:'+' }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}{% else %}<span class="muted">-</span>{% endif %}</td>

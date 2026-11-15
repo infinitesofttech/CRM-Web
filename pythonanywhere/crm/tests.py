@@ -276,3 +276,27 @@ class LandlineTests(TestCase):
         self.assertEqual(services.upsert_rows('lead', [{'company': 'Kawa', 'phone': '02827-287554'}])[0], 1)
         self.assertEqual(services.upsert_rows('lead', [{'company': 'Kawa', 'phone': '02827 287554'}])[0], 0)
         self.assertEqual(Contact.objects.get(company='Kawa').phone, '02827-287554')
+
+
+
+class UsClientTests(TestCase):
+    def test_us_page_and_import(self):
+        import json
+        User.objects.create_user('boss7', password='pw123456', is_staff=True)
+        self.client.login(username='boss7', password='pw123456')
+        self.assertEqual(services.us_phone('415-555-0100'), '+1 (415) 555-0100')
+        self.assertEqual(services.us_phone('12345'), '')
+        rows = [{'company': 'Coframe', 'website': 'coframe.com', 'address': 'San Francisco, CA',
+                 'notes': 'Raised $25M Series A', 'source': 'Funded startup'},
+                {'company': 'City of Laguna Beach', 'address': 'Laguna Beach, CA', 'follow_up': '2026-12-03',
+                 'phone': '(949) 497-3311', 'notes': 'Open RFP: website redesign', 'source': 'Open RFP'}]
+        self.client.post(reverse('crm:import', args=['us']), {'rows_json': json.dumps(rows), 'text': '', 'source': 'Research'})
+        self.assertEqual(Contact.objects.filter(kind='us').count(), 2)
+        c = Contact.objects.get(company='City of Laguna Beach')
+        self.assertEqual((str(c.follow_up), c.phone, c.source), ('2026-12-03', '+1 (949) 497-3311', 'Open RFP'))
+        page = self.client.get('/crm/us-clients/').content.decode()
+        for s in ('Why now', 'Coframe', 'Laguna Beach', 'US Clients', '03 Dec 2026'):
+            self.assertIn(s, page)
+        self.assertEqual(self.client.get('/crm/').status_code, 200)
+        self.client.post(reverse('crm:save', args=['us']), {'company': 'Acme US', 'phone': '212 555 0199'})
+        self.assertEqual(Contact.objects.get(company='Acme US').phone, '+1 (212) 555-0199')

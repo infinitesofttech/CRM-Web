@@ -32,7 +32,7 @@
   <a class="card pad" href="{% url 'crm:list' c.slug %}" style="color:inherit;--d:{{ forloop.counter0 }}" data-reveal>
     <div class="row" style="justify-content:space-between">
       <b style="display:flex;align-items:center;gap:8px;font-size:15px">
-        <svg class="i" style="color:var(--brand)"><use href="#{% if c.slug == 'leads' %}i-lead{% elif c.slug == 'internships' %}i-cap{% else %}i-store{% endif %}"/></svg>{{ c.title }}
+        <svg class="i" style="color:var(--brand)"><use href="#{% if c.slug == 'leads' %}i-lead{% elif c.slug == 'internships' %}i-cap{% elif c.slug == 'us-clients' %}i-globe{% else %}i-store{% endif %}"/></svg>{{ c.title }}
       </b>
       <b style="font-size:26px;font-weight:800" data-count="{{ c.total }}">{{ c.total }}</b>
     </div>

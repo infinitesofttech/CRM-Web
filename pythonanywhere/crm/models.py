@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-KIND_CHOICES = [('lead', 'Lead'), ('intern', 'Internship'), ('expo', 'Expo')]
+KIND_CHOICES = [('lead', 'Lead'), ('intern', 'Internship'), ('expo', 'Expo'), ('us', 'US Client')]
 
 KINDS = {
     'lead': {
@@ -19,6 +19,10 @@ KINDS = {
         'slug': 'expo', 'title': 'Expo Clients', 'singular': 'Expo Client',
         'statuses': ['New', 'Called', 'Interested', 'Follow-up', 'Meeting Booked', 'Won', 'Not Interested'],
     },
+}
+KINDS['us'] = {
+    'slug': 'us-clients', 'title': 'US Clients', 'singular': 'US Client',
+    'statuses': ['New', 'Emailed', 'Called', 'Replied', 'Meeting Booked', 'Proposal Sent', 'Won', 'Lost'],
 }
 SLUG_TO_KIND = {v['slug']: k for k, v in KINDS.items()}
 CALL_OUTCOMES = ['Connected', 'No Answer', 'Busy', 'Switched Off', 'Wrong Number', 'Call Back Later']
