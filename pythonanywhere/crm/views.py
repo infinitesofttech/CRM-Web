@@ -319,7 +319,8 @@ def export_csv(request, kind):
     for c in Contact.objects.filter(kind=kind).select_related('assigned_to').iterator():
         def safe(v):  # stop spreadsheet formula injection
             v = '' if v is None else str(v)
-            return "'" + v if v[:1] in '=+-@' else v
+            risky = v[:1] in ('=', '@') or (v[:1] in ('+', '-') and not re.fullmatch(r'[+\-\d\s()]+', v))
+            return "'" + v if risky else v
         w.writerow([safe(x) for x in [
             c.name, c.company, c.phone, c.email, c.website, c.address, c.college_name, c.status,
             services.display_name(c.assigned_to) if c.assigned_to else '', c.call_count,

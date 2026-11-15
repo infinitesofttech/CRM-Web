@@ -200,3 +200,16 @@ class StructuredImportTests(TestCase):
         self.assertIn('Rajkot', self.client.get('/crm/export/expo/').content.decode())
         self.client.post(reverse('crm:import', args=['expo']), {'rows_json': 'not json', 'text': ''})
         self.assertEqual(Contact.objects.filter(kind='expo').count(), 1)
+
+
+class CsvTests(TestCase):
+    def test_csv_cells(self):
+        User.objects.create_user('boss5', password='pw123456', is_staff=True)
+        self.client.login(username='boss5', password='pw123456')
+        services.add_contacts('expo', [{'phone': '7016230106', 'name': '=1+1', 'company': '-cmd'}])
+        body = self.client.get('/crm/export/expo/').content.decode()
+        row = body.splitlines()[1]
+        self.assertIn("'=1+1", row)
+        self.assertIn("'-cmd", row)
+        self.assertIn(',+91 70162 30106,', row)
+        self.assertNotIn(",',", row)
