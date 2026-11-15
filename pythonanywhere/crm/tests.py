@@ -248,3 +248,18 @@ class BulkDeleteTests(TestCase):
         self.client.login(username='e6', password='secret1')
         self.assertEqual(self.client.post(reverse('crm:bulk_delete', args=['expo']), {'all_matching': '1'}).status_code, 403)
         self.assertEqual(Contact.objects.filter(kind='expo').count(), 7)
+
+
+
+class RefreshFromLinkTests(TestCase):
+    def test_reimport_fixes_swapped_names(self):
+        services.upsert_rows('expo', [{'company': 'Khilan Popat', 'name': 'WDWIL TECHNOLOGIES', 'phone': '7016230106'}])
+        made, updated, skipped = services.upsert_rows('expo', [
+            {'company': 'WDWIL TECHNOLOGIES', 'name': 'Khilan Popat', 'phone': '7016230106', 'website': 'wdwil.com', 'address': 'Ahmedabad'}])
+        self.assertEqual((made, updated), (0, 1))
+        c = Contact.objects.get(kind='expo')
+        self.assertEqual((c.company, c.name, c.website, c.address), ('WDWIL TECHNOLOGIES', 'Khilan Popat', 'wdwil.com', 'Ahmedabad'))
+        # empty values never wipe existing data
+        services.upsert_rows('expo', [{'company': '', 'phone': '7016230106', 'website': ''}])
+        c.refresh_from_db()
+        self.assertEqual(c.website, 'wdwil.com')

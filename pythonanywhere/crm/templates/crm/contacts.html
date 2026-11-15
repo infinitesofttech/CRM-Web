@@ -247,15 +247,17 @@ function toRow(f) {
   const email = pick(f, [/mail/i], isMail);
   const website = pick(f, [/website|web_?site|web/i, /site|url|domain/i], isSite);
   const okName = v => !isMail(v) && !isSite(v) && !/^\d+$/.test(v) && String(v).length > 1;
-  const company = pick(f, [/(company|exhibitor|firm|business|brand|organi[sz]ation)_?name/i, /company|exhibitor|firm|business|brand|organi[sz]ation|fascia/i], okName);
-  const name = pick(f, [/contact_?person|person_?name|owner|full_?name/i, /^name$|first_?name/i, /_name$/i], v => okName(v) && v !== company);
+  const company = pick(f, [/^(company|firm|business|organi[sz]ation|brand)_?name$/i, /(company|firm|business|organi[sz]ation)_?name/i,
+    /^(company|firm|business|organi[sz]ation|brand)$/i, /company|firm|business|organi[sz]ation|brand|fascia/i, /exhibitor/i], okName);
+  const name = pick(f, [/contact_?person|person_?name|owner_?name|full_?name/i, /exhibitor_?name/i, /^name$|first_?name|user_?name/i, /_name$/i],
+    v => okName(v) && v !== company);
   const addr = [];
   for (const p of [/address|addr/i, /area|locality/i, /city/i, /district/i, /state/i, /pin_?code|zip|postal/i]) {
     const k = Object.keys(f).find(k => p.test(k) && !/mail|web|url|_id$|^id$/i.test(k));
     if (k && !addr.includes(f[k]) && !/^\d{1,4}$/.test(f[k])) addr.push(f[k]);
   }
   const notes = Object.keys(f).filter(k => /stall|booth|hall/i.test(k) && String(f[k]).length < 40).map(k => k + ': ' + f[k]);
-  return {company: company || (name && !phone ? name : company), name, phone, email, website, address: addr.join(', '), notes: notes.join(' | ')};
+  return {company: company || (name && !phone ? name : company), name, phone, email, website, address: addr.join(', '), notes: notes.join(' | '), sid: f.__sid || ''};
 }
 function walkRows(o, ctx, rows, keys) {
   if (Array.isArray(o)) { o.forEach(x => walkRows(x, ctx, rows, keys)); return; }
@@ -263,9 +265,47 @@ function walkRows(o, ctx, rows, keys) {
   const own = flat(o);
   Object.keys(own).forEach(k => keys.add(k));
   const merged = {...ctx, ...own};
+  // remember the stall id (needed to ask the expo site for that stall's exhibitor details)
+  if (Object.keys(own).some(k => /^stall/i.test(k))) merged.__sid = own.stall_id || own.id || merged.__sid || '';
   const hasContact = Object.keys(own).some(k => /phone|mobile|whatsapp|contact|mail/i.test(k) && (isPhone(own[k]) || isMail(own[k])));
   if (hasContact) { rows.push(toRow(merged)); return; }
   for (const v of Object.values(o)) if (v && typeof v === 'object') walkRows(v, merged, rows, keys);
+}
+function flatDeep(o, pre, out) {
+  out = out || {};
+  if (Array.isArray(o)) { if (o.length) flatDeep(o[0], pre, out); return out; }
+  if (!o || typeof o !== 'object') return out;
+  for (const [k, v] of Object.entries(o)) {
+    const key = pre ? pre + '_' + k : k;
+    if (v && typeof v === 'object') flatDeep(v, key, out);
+    else if (v != null && String(v).trim()) out[key] = String(v).trim();
+  }
+  return out;
+}
+// For each stall, ask the expo site for its exhibitor details (website, address...). 3 at a time, gently.
+async function enrich(rows, st, keys) {
+  const need = rows.filter(r => r.sid && (!r.website || !r.address));
+  if (!need.length) return 0;
+  let i = 0, done = 0, ok = 0, fails = 0;
+  async function worker() {
+    while (i < need.length) {
+      const r = need[i++];
+      try {
+        const res = await fetch('https://api.lubindiaexpo.com/api/front/stalls/exhibitor-details?stall_id=' + encodeURIComponent(r.sid), {mode: 'cors', credentials: 'omit'});
+        if (!res.ok) throw new Error(res.status);
+        const f = flatDeep(await res.json());
+        Object.keys(f).forEach(k => keys.add('details.' + k));
+        const x = toRow(f);
+        for (const k of ['website', 'address', 'email', 'company', 'name']) if (x[k] && !r[k]) r[k] = x[k];
+        ok++;
+      } catch (e) { fails++; if (!ok && fails >= 3) i = need.length; }
+      done++;
+      st.textContent = 'Website / address lavi rahyo chhu: ' + done + ' / ' + need.length + '...';
+      await new Promise(z => setTimeout(z, 150));
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  return ok;
 }
 async function browserList(url) {
   // runs in YOUR browser with its normal Origin; the expo site decides whether to allow it
@@ -294,10 +334,12 @@ if (linkBtn) linkBtn.onclick = async () => {
     const seen = new Set(), good = [];
     for (const r of rows) { const k = (r.phone || '').replace(/\D/g, '').slice(-10) || (r.company || '').toLowerCase(); if (k && !seen.has(k)) { seen.add(k); good.push(r); } }
     if (good.length) {
+      const got = await enrich(good, st, keys);
+      $('fieldsFound').textContent = [...keys].join(', ');
       $('rowsJson').value = JSON.stringify(good);
       $('bulkText').value = good.map(r => [r.company, r.name, r.phone, r.email, r.website, r.address].filter(Boolean).join(' | ')).join('\n');
       const n = f => good.filter(r => r[f]).length;
-      st.textContent = good.length + ' companies mali - company name: ' + n('company') + ', website: ' + n('website') + ', contact: ' + n('phone') + ', email: ' + n('email') + ', address: ' + n('address') + '. Import dabavo.';
+      st.textContent = good.length + ' companies mali (details ' + got + ' stall mathi) - company name: ' + n('company') + ', website: ' + n('website') + ', contact: ' + n('phone') + ', email: ' + n('email') + ', address: ' + n('address') + '. Import dabavo.';
     } else { st.textContent = 'Site e list aapi pan temaa company details nathi.'; $('manualHelp').open = true; }
   } catch (e) {
     st.textContent = 'Expo site e bahar thi list aapvani na pahdi (block). Niche ni rit vapro.';

@@ -225,8 +225,8 @@ UPSERT_LIMITS = {'company': 160, 'name': 120, 'email': 160, 'website': 200, 'add
 
 
 def upsert_rows(kind, items, source='Import'):
-    """Structured import (from an expo link). New phones are added; existing phones get their empty
-    fields filled in (company, website, email, address...). Returns (created, updated, skipped)."""
+    """Structured import (from an expo link). New phones are added; existing phones get company, name,
+    website, email and address refreshed with the non-empty values from the link. Returns (created, updated, skipped)."""
     existing = list(Contact.objects.filter(kind=kind))
     by_phone = {c.phone: c for c in existing if c.phone}
     companies = {c.company.lower() for c in existing if c.company and not c.phone}
@@ -251,7 +251,7 @@ def upsert_rows(kind, items, source='Import'):
         if old is not None:
             dirty = False
             for f, v in clean.items():
-                if v and not getattr(old, f):
+                if v and v != getattr(old, f):   # link data is the source of truth for these fields
                     setattr(old, f, v)
                     dirty = True
             if notes and notes not in old.notes:
