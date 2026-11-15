@@ -39,8 +39,14 @@
     {% for c in page %}
     <tr>
       <td>
+        {% if kind == 'expo' %}
+        <b>{{ c.company|default:c.name|default:"(no name)" }}</b>
+        {% if c.name and c.company %}<br><span class="muted">{{ c.name }}</span>{% endif %}
+        {% else %}
         <b>{{ c.name|default:c.company|default:"(no name)" }}</b>
         {% if c.name and c.company %}<br><span class="muted">{{ c.company }}</span>{% endif %}
+        {% endif %}
+        {% if c.address %}<br><span class="small muted">{{ c.address }}</span>{% endif %}
         {% if c.college_name %}<br><span class="muted small">{{ c.college_name }}</span>{% endif %}
         {% if c.website %}<br><a class="small" href="{% if 'http' in c.website|slice:':5' %}{{ c.website }}{% else %}https://{{ c.website }}{% endif %}" target="_blank" rel="noopener noreferrer">{{ c.website }}</a>{% endif %}
         <br><span class="small muted">{{ c.source }}</span>
@@ -55,7 +61,7 @@
       <td class="small muted">{% if c.last_call_at %}{{ c.last_call_at|date:"d M, h:i A" }} ({{ c.call_count }}){% else %}Never called{% endif %}</td>
       <td style="white-space:nowrap;text-align:right">
         <button class="btn p s" onclick="openCall(this)" data-id="{{ c.id }}" data-name="{{ c.name|default:c.company|default:c.phone }}" data-phone="{{ c.phone }}" data-status="{{ c.status }}" data-follow="{{ c.follow_up|date:'Y-m-d' }}">Log call</button>
-        <button class="btn s" onclick="openEdit(this)" data-id="{{ c.id }}" data-name="{{ c.name }}" data-company="{{ c.company }}" data-phone="{{ c.phone }}" data-email="{{ c.email }}" data-website="{{ c.website }}" data-college="{{ c.college_name }}" data-status="{{ c.status }}" data-assigned="{{ c.assigned_to_id|default:'' }}" data-follow="{{ c.follow_up|date:'Y-m-d' }}" data-notes="{{ c.notes }}">Edit</button>
+        <button class="btn s" onclick="openEdit(this)" data-id="{{ c.id }}" data-name="{{ c.name }}" data-company="{{ c.company }}" data-phone="{{ c.phone }}" data-email="{{ c.email }}" data-website="{{ c.website }}" data-address="{{ c.address }}" data-college="{{ c.college_name }}" data-status="{{ c.status }}" data-assigned="{{ c.assigned_to_id|default:'' }}" data-follow="{{ c.follow_up|date:'Y-m-d' }}" data-notes="{{ c.notes }}">Edit</button>
         {% if is_admin %}<form method="post" action="{% url 'crm:delete' c.id %}" style="display:inline" onsubmit="return confirm('Delete this contact?')">{% csrf_token %}<input type="hidden" name="next" value="{{ full_path }}"><button class="btn s d">Delete</button></form>{% endif %}
       </td>
     </tr>
@@ -80,7 +86,8 @@
     {% if kind == 'intern' %}<input name="college_name" id="e_college">{% else %}<input name="company" id="e_company">{% endif %}</div></div>
   <div class="row"><div style="flex:1"><label>Mobile</label><input name="phone" id="e_phone"></div>
   <div style="flex:1"><label>Email</label><input name="email" id="e_email"></div></div>
-  {% if kind != 'intern' %}<label>Website</label><input name="website" id="e_website">{% endif %}
+  {% if kind != 'intern' %}<label>Website</label><input name="website" id="e_website">
+  <label>Address</label><input name="address" id="e_address">{% endif %}
   <div class="row"><div style="flex:1"><label>Status</label><select name="status" id="e_status">{% for s in cfg.statuses %}<option>{{ s }}</option>{% endfor %}</select></div>
   <div style="flex:1"><label>Follow-up date</label><input type="date" name="follow_up" id="e_follow"></div></div>
   {% if is_admin %}<label>Assigned to</label><select name="assigned_to" id="e_assigned"><option value="">Unassigned</option>
@@ -133,6 +140,8 @@
       <button type="button" class="btn p s" id="linkBtn" style="white-space:nowrap">Get list</button>
     </div>
     <div id="linkStatus" class="small muted" style="margin-top:6px"></div>
+    <input type="hidden" name="rows_json" id="rowsJson">
+    <details style="margin-top:4px"><summary class="small muted" style="cursor:pointer">Data fields</summary><div id="fieldsFound" class="small muted" style="word-break:break-all"></div></details>
     <details id="manualHelp" style="margin-top:8px"><summary class="small" style="cursor:pointer;color:var(--brand)">Link thi list na aave to aa rite lavo</summary>
     <ol class="small" style="margin:6px 0 6px 18px;padding:0">
       <li><a href="https://www.lubindiaexpo.com/floor-plan" target="_blank" rel="noopener">lubindiaexpo.com/floor-plan</a> kholo, list load thava do.</li>
@@ -147,7 +156,7 @@
   <label style="display:flex;gap:8px;align-items:center;color:inherit"><input type="checkbox" name="names_only" value="1" style="width:auto"> Fakt company names (ek line ma ek naam, number pachhi umerisu)</label>
   {% endif %}
   <label>{% if kind == 'expo' %}Expo list (link thi aavshe, athva paste karo). Format: Company, Name, Mobile, Website, Email{% else %}Numbers (OCR result lands here - or paste directly){% endif %}</label>
-  <textarea name="text" id="bulkText" rows="7" placeholder="+91 98242 26405&#10;ABC Industries, Rajesh Shah, 94275 70993, abc.in"></textarea>
+  <textarea name="text" id="bulkText" rows="7" oninput="var r=document.getElementById('rowsJson'); if(r) r.value=''" placeholder="+91 98242 26405&#10;ABC Industries, Rajesh Shah, 94275 70993, abc.in"></textarea>
   <div class="row"><div style="flex:1"><label>{% if kind == 'intern' %}College (optional){% else %}Source label{% endif %}</label>
     <input name="{% if kind == 'intern' %}college_name{% else %}source{% endif %}" value="{% if kind == 'expo' %}Expo{% endif %}"></div></div>
   <div class="row" style="margin-top:12px"><button class="btn p">Import</button><button type="button" class="btn" onclick="importDlg.close()">Cancel</button></div>
@@ -165,7 +174,7 @@ function openEdit(btn){
   const d = btn ? btn.dataset : {};
   $('editTitle').textContent = btn ? 'Edit {{ cfg.singular }}' : 'Add {{ cfg.singular }}';
   setv('e_id', d.id); setv('e_name', d.name); setv('e_company', d.company); setv('e_college', d.college);
-  setv('e_phone', d.phone); setv('e_email', d.email); setv('e_website', d.website); setv('e_notes', d.notes);
+  setv('e_phone', d.phone); setv('e_email', d.email); setv('e_website', d.website); setv('e_address', d.address); setv('e_notes', d.notes);
   setv('e_follow', d.follow); setv('e_assigned', d.assigned); setv('e_status', d.status || 'New');
   $('editDlg').showModal();
 }
@@ -193,16 +202,49 @@ async function openCall(btn){
 }
 
 const linkBtn = $('linkBtn');
-// Rows from any JSON: objects that have a phone -> "company, name, phone, website, email"; otherwise company names only.
-function walkRows(o, rows, names) {
-  if (Array.isArray(o)) { o.forEach(x => walkRows(x, rows, names)); return; }
+// ---- turn any expo JSON into rows: company, contact person, phone, email, website, address
+const isMail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const isSite = v => /^(https?:\/\/)?(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(v) && !isMail(v) && !/\.(png|jpe?g|gif|webp|svg|pdf)(\?|$)/i.test(v);
+const isPhone = v => String(v).replace(/\D/g, '').length >= 10 && String(v).replace(/\D/g, '').length <= 13;
+function flat(o) {
+  const out = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (v == null) continue;
+    if (typeof v === 'string' || typeof v === 'number') { if (String(v).trim()) out[k] = String(v).trim(); }
+    else if (!Array.isArray(v) && typeof v === 'object')
+      for (const [ck, cv] of Object.entries(v)) if ((typeof cv === 'string' || typeof cv === 'number') && String(cv).trim()) out[k + '_' + ck] = String(cv).trim();
+  }
+  return out;
+}
+function pick(f, pats, ok) {
+  const ks = Object.keys(f);
+  for (const p of pats) { const k = ks.find(k => p.test(k) && (!ok || ok(f[k]))); if (k) return f[k]; }
+  return '';
+}
+function toRow(f) {
+  const phone = pick(f, [/whatsapp|mobile/i, /phone|contact_?no|contact_?number|tel/i, /contact/i], isPhone);
+  const email = pick(f, [/mail/i], isMail);
+  const website = pick(f, [/website|web_?site|web/i, /site|url|domain/i], isSite);
+  const okName = v => !isMail(v) && !isSite(v) && !/^\d+$/.test(v) && String(v).length > 1;
+  const company = pick(f, [/(company|exhibitor|firm|business|brand|organi[sz]ation)_?name/i, /company|exhibitor|firm|business|brand|organi[sz]ation|fascia/i], okName);
+  const name = pick(f, [/contact_?person|person_?name|owner|full_?name/i, /^name$|first_?name/i, /_name$/i], v => okName(v) && v !== company);
+  const addr = [];
+  for (const p of [/address|addr/i, /area|locality/i, /city/i, /district/i, /state/i, /pin_?code|zip|postal/i]) {
+    const k = Object.keys(f).find(k => p.test(k) && !/mail|web|url|_id$|^id$/i.test(k));
+    if (k && !addr.includes(f[k]) && !/^\d{1,4}$/.test(f[k])) addr.push(f[k]);
+  }
+  const notes = Object.keys(f).filter(k => /stall|booth|hall/i.test(k) && String(f[k]).length < 40).map(k => k + ': ' + f[k]);
+  return {company: company || (name && !phone ? name : company), name, phone, email, website, address: addr.join(', '), notes: notes.join(' | ')};
+}
+function walkRows(o, ctx, rows, keys) {
+  if (Array.isArray(o)) { o.forEach(x => walkRows(x, ctx, rows, keys)); return; }
   if (!o || typeof o !== 'object') return;
-  const e = Object.entries(o);
-  const f = re => { const x = e.find(([k, v]) => re.test(k) && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''); return x ? String(x[1]).trim() : ''; };
-  const ph = f(/phone|mobile|contact|whatsapp/i), co = f(/company|firm|business|brand|exhibitor/i);
-  if (ph) rows.push([co, f(/^name$|person|owner/i), ph, f(/web|site|url/i), f(/mail/i)].join(', '));
-  else if (co && co.length > 1) names.push(co);
-  e.forEach(([k, v]) => { if (v && typeof v === 'object') walkRows(v, rows, names); });
+  const own = flat(o);
+  Object.keys(own).forEach(k => keys.add(k));
+  const merged = {...ctx, ...own};
+  const hasContact = Object.keys(own).some(k => /phone|mobile|whatsapp|contact|mail/i.test(k) && (isPhone(own[k]) || isMail(own[k])));
+  if (hasContact) { rows.push(toRow(merged)); return; }
+  for (const v of Object.values(o)) if (v && typeof v === 'object') walkRows(v, merged, rows, keys);
 }
 async function browserList(url) {
   // runs in YOUR browser with its normal Origin; the expo site decides whether to allow it
@@ -215,29 +257,27 @@ async function browserList(url) {
 if (linkBtn) linkBtn.onclick = async () => {
   const st = $('linkStatus'), url = $('expoUrl').value.trim();
   if (!url) { st.textContent = 'Expo link nakho.'; return; }
-  linkBtn.disabled = true; st.textContent = 'List lavi rahyo chhu...';
-  const done = (lines, msg, namesOnly) => {
-    $('bulkText').value = lines.join('\n');
-    const cb = document.querySelector('[name=names_only]'); if (cb) cb.checked = !!namesOnly;
-    st.textContent = msg;
-  };
+  linkBtn.disabled = true; st.textContent = 'List lavi rahyo chhu...'; $('rowsJson').value = '';
   try {
-    // 1) server (works for normal sites on a plan that allows outgoing requests)
     const fd = new FormData(); fd.append('url', url);
     fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     const r = await fetch("{% url 'crm:fetch_link' %}", {method: 'POST', body: fd, credentials: 'same-origin'});
     const j = await r.json();
-    if (j.lines && j.lines.length) { done(j.lines, j.lines.length + ' companies mali - check karo, pachhi Import dabavo.'); linkBtn.disabled = false; return; }
+    if (j.lines && j.lines.length) { $('bulkText').value = j.lines.join('\n'); st.textContent = j.lines.length + ' companies mali - check karo, pachhi Import dabavo.'; linkBtn.disabled = false; return; }
   } catch (e) {}
   try {
-    // 2) your browser
-    st.textContent = 'Browser thi try kari rahyo chhu...';
-    const data = await browserList(url), rows = [], names = [];
-    walkRows(data, rows, names);
-    const uniq = [...new Set(names)];
-    if (rows.length) done(rows, rows.length + ' companies (number sathe) mali - check karo, pachhi Import dabavo.');
-    else if (uniq.length) done(uniq, uniq.length + ' company names mali (number nathi). Import karo, pachhi number umerisu.', true);
-    else { st.textContent = 'Site e list aapi pan temaa company details nathi.'; $('manualHelp').open = true; }
+    st.textContent = 'Browser thi list lavi rahyo chhu...';
+    const data = await browserList(url), rows = [], keys = new Set();
+    walkRows(data, {}, rows, keys);
+    $('fieldsFound').textContent = [...keys].join(', ');
+    const seen = new Set(), good = [];
+    for (const r of rows) { const k = (r.phone || '').replace(/\D/g, '').slice(-10) || (r.company || '').toLowerCase(); if (k && !seen.has(k)) { seen.add(k); good.push(r); } }
+    if (good.length) {
+      $('rowsJson').value = JSON.stringify(good);
+      $('bulkText').value = good.map(r => [r.company, r.name, r.phone, r.email, r.website, r.address].filter(Boolean).join(' | ')).join('\n');
+      const n = f => good.filter(r => r[f]).length;
+      st.textContent = good.length + ' companies mali - company name: ' + n('company') + ', website: ' + n('website') + ', contact: ' + n('phone') + ', email: ' + n('email') + ', address: ' + n('address') + '. Import dabavo.';
+    } else { st.textContent = 'Site e list aapi pan temaa company details nathi.'; $('manualHelp').open = true; }
   } catch (e) {
     st.textContent = 'Expo site e bahar thi list aapvani na pahdi (block). Niche ni rit vapro.';
     $('manualHelp').open = true;

@@ -141,7 +141,8 @@ def contact_list(request, slug):
 
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(company__icontains=q) | Q(phone__icontains=q) |
-                       Q(email__icontains=q) | Q(website__icontains=q) | Q(notes__icontains=q))
+                       Q(email__icontains=q) | Q(website__icontains=q) | Q(address__icontains=q) |
+                       Q(notes__icontains=q))
     if status:
         qs = qs.filter(status=status)
     if who == 'none':
@@ -204,6 +205,8 @@ def contact_save(request, kind):
     c.company = f.get('company', '').strip()[:160]
     c.email = f.get('email', '').strip()[:160]
     c.website = f.get('website', '').strip()[:200]
+    if 'address' in f:
+        c.address = f.get('address', '').strip()[:255]
     c.college_name = f.get('college_name', '').strip()[:120]
     c.notes = f.get('notes', '')[:2000]
     if f.get('status') in KINDS[kind]['statuses']:
@@ -271,6 +274,17 @@ def import_view(request, kind):
         rows = services.parse_lines(text)
     college = request.POST.get('college_name', '').strip()
     source = request.POST.get('source', '').strip() or {'intern': 'College group', 'expo': 'Expo', 'lead': 'Import'}[kind]
+    rows_json = request.POST.get('rows_json', '').strip()
+    if rows_json:
+        try:
+            items = json.loads(rows_json)
+        except ValueError:
+            items = []
+        items = [i for i in items if isinstance(i, dict)][:5000] if isinstance(items, list) else []
+        made, updated, skipped = services.upsert_rows(kind, items, source=source)
+        messages.success(request, '%d navi company add thai, %d juni company ni details update thai, %d skip.'
+                         % (made, updated, skipped))
+        return redirect('crm:list', slug=KINDS[kind]['slug'])
     if not rows:
         messages.warning(request, 'Koi valid mobile number / company maryo nahi.')
     else:
@@ -300,14 +314,14 @@ def export_csv(request, kind):
     resp = HttpResponse(content_type='text/csv')
     resp['Content-Disposition'] = 'attachment; filename="crm-%s.csv"' % KINDS[kind]['slug']
     w = csv.writer(resp)
-    w.writerow(['Name', 'Company', 'Phone', 'Email', 'Website', 'College', 'Status', 'Assigned to',
+    w.writerow(['Name', 'Company', 'Phone', 'Email', 'Website', 'Address', 'College', 'Status', 'Assigned to',
                 'Calls', 'Last call', 'Follow-up', 'Source', 'Notes', 'Added'])
     for c in Contact.objects.filter(kind=kind).select_related('assigned_to').iterator():
         def safe(v):  # stop spreadsheet formula injection
             v = '' if v is None else str(v)
             return "'" + v if v[:1] in '=+-@' else v
         w.writerow([safe(x) for x in [
-            c.name, c.company, c.phone, c.email, c.website, c.college_name, c.status,
+            c.name, c.company, c.phone, c.email, c.website, c.address, c.college_name, c.status,
             services.display_name(c.assigned_to) if c.assigned_to else '', c.call_count,
             c.last_call_at.strftime('%Y-%m-%d %H:%M') if c.last_call_at else '',
             c.follow_up or '', c.source, c.notes, c.created_at.strftime('%Y-%m-%d')]])

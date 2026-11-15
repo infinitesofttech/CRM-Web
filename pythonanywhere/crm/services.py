@@ -80,6 +80,7 @@ def add_contacts(kind, items, source='Manual', college='', assigned_to=None):
             company=(it.get('company') or '').strip()[:160],
             email=(it.get('email') or '').strip()[:160],
             website=(it.get('website') or '').strip()[:200],
+            address=(it.get('address') or '').strip()[:255],
             college_name=(it.get('college_name') or college or '').strip()[:120],
             notes=(it.get('notes') or '')[:2000],
             source=(it.get('source') or source)[:80],
@@ -218,3 +219,53 @@ def import_old_students():
             source='Old student list', ext_ref=ref, created_at=s.created_at))
     Contact.objects.bulk_create(new, batch_size=200)
     return len(new)
+
+
+UPSERT_LIMITS = {'company': 160, 'name': 120, 'email': 160, 'website': 200, 'address': 255}
+
+
+def upsert_rows(kind, items, source='Import'):
+    """Structured import (from an expo link). New phones are added; existing phones get their empty
+    fields filled in (company, website, email, address...). Returns (created, updated, skipped)."""
+    existing = list(Contact.objects.filter(kind=kind))
+    by_phone = {c.phone: c for c in existing if c.phone}
+    companies = {c.company.lower() for c in existing if c.company and not c.phone}
+    new, changed, skipped, seen = [], {}, 0, set()
+    now = timezone.now()
+    for it in items:
+        clean = {f: str(it.get(f) or '').strip()[:n] for f, n in UPSERT_LIMITS.items()}
+        notes = str(it.get('notes') or '').strip()[:1000]
+        phone = normalize_phone(str(it.get('phone') or ''))
+        if not phone and not clean['company']:
+            skipped += 1
+            continue
+        key = phone or clean['company'].lower()
+        if key in seen:
+            skipped += 1
+            continue
+        seen.add(key)
+        old = by_phone.get(phone) if phone else None
+        if old is None and not phone and key in companies:
+            skipped += 1
+            continue
+        if old is not None:
+            dirty = False
+            for f, v in clean.items():
+                if v and not getattr(old, f):
+                    setattr(old, f, v)
+                    dirty = True
+            if notes and notes not in old.notes:
+                old.notes = ('%s\n%s' % (old.notes, notes)).strip()[:2000]
+                dirty = True
+            if dirty:
+                old.updated_at = now
+                changed[old.pk] = old
+            else:
+                skipped += 1
+            continue
+        new.append(Contact(kind=kind, phone=phone, source=source[:80], notes=notes, **clean))
+    if new:
+        Contact.objects.bulk_create(new, batch_size=200)
+    if changed:
+        Contact.objects.bulk_update(list(changed.values()), list(UPSERT_LIMITS) + ['notes', 'updated_at'], batch_size=200)
+    return len(new), len(changed), skipped

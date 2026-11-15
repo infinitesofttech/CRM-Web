@@ -32,6 +32,7 @@ class Contact(models.Model):
     phone = models.CharField(max_length=20, blank=True, default='')
     email = models.CharField(max_length=160, blank=True, default='')
     website = models.CharField(max_length=200, blank=True, default='')
+    address = models.CharField(max_length=255, blank=True, default='')
     college_name = models.CharField(max_length=120, blank=True, default='')
     source = models.CharField(max_length=80, blank=True, default='')
     status = models.CharField(max_length=30, default='New')

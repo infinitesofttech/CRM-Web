@@ -166,3 +166,37 @@ class FetchLinkTests(TestCase):
         self.assertIn('id="expoUrl"', page)
         self.assertNotIn('id="imgs"', page)
         self.assertIn('id="imgs"', self.client.get('/crm/internships/').content.decode())
+
+
+
+class StructuredImportTests(TestCase):
+    def test_upsert_fills_existing_and_adds_new(self):
+        services.add_contacts('expo', [{'phone': '7016230106', 'email': 'k@x.com'}], source='Expo')
+        rows = [
+            {'company': 'Khilan Enterprise', 'phone': '+91 70162 30106', 'website': 'khilan.in', 'address': 'GIDC, Ahmedabad'},
+            {'company': 'New Co', 'name': 'Raj', 'phone': '9714938303', 'email': 'n@c.com', 'website': 'newco.com', 'address': 'Surat'},
+            {'company': 'New Co dup', 'phone': '97149 38303'},
+            {'company': 'No Phone Co'},
+            {'name': 'nothing useful'},
+        ]
+        made, updated, skipped = services.upsert_rows('expo', rows, source='Expo')
+        self.assertEqual((made, updated, skipped), (2, 1, 2))
+        k = Contact.objects.get(kind='expo', phone='+91 70162 30106')
+        self.assertEqual((k.company, k.website, k.address, k.email), ('Khilan Enterprise', 'khilan.in', 'GIDC, Ahmedabad', 'k@x.com'))
+        self.assertTrue(Contact.objects.filter(kind='expo', company='No Phone Co').exists())
+        self.assertEqual(services.upsert_rows('expo', rows, source='Expo')[:2], (0, 0))
+
+    def test_import_view_rows_json(self):
+        import json
+        User.objects.create_user('boss4', password='pw123456', is_staff=True)
+        self.client.login(username='boss4', password='pw123456')
+        data = [{'company': 'ABC Ltd', 'phone': '9824226405', 'website': 'abc.in', 'email': 'a@abc.in', 'address': 'Rajkot'}]
+        self.client.post(reverse('crm:import', args=['expo']), {'rows_json': json.dumps(data), 'text': 'x', 'source': 'IIF'})
+        c = Contact.objects.get(kind='expo')
+        self.assertEqual((c.company, c.address, c.source), ('ABC Ltd', 'Rajkot', 'IIF'))
+        page = self.client.get('/crm/expo/?q=Rajkot').content.decode()
+        self.assertIn('ABC Ltd', page)
+        self.assertIn('Rajkot', page)
+        self.assertIn('Rajkot', self.client.get('/crm/export/expo/').content.decode())
+        self.client.post(reverse('crm:import', args=['expo']), {'rows_json': 'not json', 'text': ''})
+        self.assertEqual(Contact.objects.filter(kind='expo').count(), 1)
