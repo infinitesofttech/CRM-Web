@@ -193,18 +193,55 @@ async function openCall(btn){
 }
 
 const linkBtn = $('linkBtn');
+// Rows from any JSON: objects that have a phone -> "company, name, phone, website, email"; otherwise company names only.
+function walkRows(o, rows, names) {
+  if (Array.isArray(o)) { o.forEach(x => walkRows(x, rows, names)); return; }
+  if (!o || typeof o !== 'object') return;
+  const e = Object.entries(o);
+  const f = re => { const x = e.find(([k, v]) => re.test(k) && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''); return x ? String(x[1]).trim() : ''; };
+  const ph = f(/phone|mobile|contact|whatsapp/i), co = f(/company|firm|business|brand|exhibitor/i);
+  if (ph) rows.push([co, f(/^name$|person|owner/i), ph, f(/web|site|url/i), f(/mail/i)].join(', '));
+  else if (co && co.length > 1) names.push(co);
+  e.forEach(([k, v]) => { if (v && typeof v === 'object') walkRows(v, rows, names); });
+}
+async function browserList(url) {
+  // runs in YOUR browser with its normal Origin; the expo site decides whether to allow it
+  const host = new URL(url).hostname.replace(/^www\./, '');
+  const api = host === 'lubindiaexpo.com' ? 'https://api.lubindiaexpo.com/api/front/stalls' : url;
+  const r = await fetch(api, {mode: 'cors', credentials: 'omit'});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return JSON.parse(await r.text());
+}
 if (linkBtn) linkBtn.onclick = async () => {
   const st = $('linkStatus'), url = $('expoUrl').value.trim();
   if (!url) { st.textContent = 'Expo link nakho.'; return; }
   linkBtn.disabled = true; st.textContent = 'List lavi rahyo chhu...';
+  const done = (lines, msg, namesOnly) => {
+    $('bulkText').value = lines.join('\n');
+    const cb = document.querySelector('[name=names_only]'); if (cb) cb.checked = !!namesOnly;
+    st.textContent = msg;
+  };
   try {
+    // 1) server (works for normal sites on a plan that allows outgoing requests)
     const fd = new FormData(); fd.append('url', url);
     fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     const r = await fetch("{% url 'crm:fetch_link' %}", {method: 'POST', body: fd, credentials: 'same-origin'});
     const j = await r.json();
-    if (j.lines && j.lines.length) { $('bulkText').value = j.lines.join('\n'); st.textContent = j.lines.length + ' companies mali - check karo, pachhi Import dabavo.'; }
-    else { st.textContent = j.note || 'List nathi mali.'; $('manualHelp').open = true; }
-  } catch (e) { st.textContent = 'Link khuli nahi.'; $('manualHelp').open = true; }
+    if (j.lines && j.lines.length) { done(j.lines, j.lines.length + ' companies mali - check karo, pachhi Import dabavo.'); linkBtn.disabled = false; return; }
+  } catch (e) {}
+  try {
+    // 2) your browser
+    st.textContent = 'Browser thi try kari rahyo chhu...';
+    const data = await browserList(url), rows = [], names = [];
+    walkRows(data, rows, names);
+    const uniq = [...new Set(names)];
+    if (rows.length) done(rows, rows.length + ' companies (number sathe) mali - check karo, pachhi Import dabavo.');
+    else if (uniq.length) done(uniq, uniq.length + ' company names mali (number nathi). Import karo, pachhi number umerisu.', true);
+    else { st.textContent = 'Site e list aapi pan temaa company details nathi.'; $('manualHelp').open = true; }
+  } catch (e) {
+    st.textContent = 'Expo site e bahar thi list aapvani na pahdi (block). Niche ni rit vapro.';
+    $('manualHelp').open = true;
+  }
   linkBtn.disabled = false;
 };
 // Photo OCR (runs in the browser; nothing is uploaded)
