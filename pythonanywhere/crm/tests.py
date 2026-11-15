@@ -149,3 +149,20 @@ class NamesOnlyTests(TestCase):
         self.assertEqual(Contact.objects.filter(kind='expo', phone='').count(), 2)
         r = self.client.get('/crm/expo/')
         self.assertContains(r, 'lubindiaexpo.com/floor-plan')
+
+
+
+class FetchLinkTests(TestCase):
+    def test_fetch_link_guards_and_template(self):
+        User.objects.create_user('boss3', password='pw123456', is_staff=True)
+        services.create_employee('e3', 'E3', 'secret1')
+        self.assertEqual(self.client.post('/crm/fetch-link/', {'url': 'http://x.com'}).status_code, 302)
+        self.client.login(username='e3', password='secret1')
+        self.assertEqual(self.client.post('/crm/fetch-link/', {'url': 'http://x.com'}).status_code, 403)
+        self.client.login(username='boss3', password='pw123456')
+        for bad in ['http://127.0.0.1/', 'http://localhost:8000', 'ftp://x.com', 'nonsense', 'http://169.254.169.254/']:
+            self.assertIn('note', self.client.post('/crm/fetch-link/', {'url': bad}).json(), bad)
+        page = self.client.get('/crm/expo/').content.decode()
+        self.assertIn('id="expoUrl"', page)
+        self.assertNotIn('id="imgs"', page)
+        self.assertIn('id="imgs"', self.client.get('/crm/internships/').content.decode())

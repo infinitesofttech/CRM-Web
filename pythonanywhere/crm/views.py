@@ -1,5 +1,11 @@
 import csv
 import datetime
+import ipaddress
+import json
+import re
+import socket
+import urllib.parse
+import urllib.request
 from zoneinfo import ZoneInfo
 from functools import wraps
 
@@ -343,3 +349,63 @@ def employees_view(request):
         s = stats.get(u.id, {'total': 0, 'called': 0})
         rows.append({'u': u, 'name': services.display_name(u), 'total': s['total'], 'called': s['called']})
     return render(request, 'crm/employees.html', {'rows': rows, 'is_admin': True, 'active': 'employees'})
+
+
+# ------------------------------------------------------------------ expo link -> list (admin)
+def _public_host(host):
+    try:
+        for info in socket.getaddrinfo(host, None):
+            ip = ipaddress.ip_address(info[4][0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def _json_lines(data, out):
+    if isinstance(data, list):
+        for d in data:
+            _json_lines(d, out)
+    elif isinstance(data, dict):
+        def pick(*keys):
+            for k, val in data.items():
+                if any(x in k.lower() for x in keys) and isinstance(val, (str, int)) and str(val).strip():
+                    return str(val).strip()
+            return ''
+        phone = pick('phone', 'mobile', 'contact', 'whatsapp')
+        if phone:
+            out.append(', '.join([pick('company', 'firm', 'business', 'brand', 'exhibitor'), pick('person', 'owner'),
+                                  phone, pick('web', 'site'), pick('mail')]))
+        for val in data.values():
+            if isinstance(val, (dict, list)):
+                _json_lines(val, out)
+
+
+@crm_required(admin=True)
+@require_POST
+def fetch_link(request):
+    url = request.POST.get('url', '').strip()
+    u = urllib.parse.urlparse(url)
+    if u.scheme not in ('http', 'https') or not u.hostname or not _public_host(u.hostname):
+        return JsonResponse({'note': 'Valid public link nakho.'})
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 CRM-Importer'})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read(3000000).decode('utf8', 'replace')
+    except Exception:
+        return JsonResponse({'note': 'Server aa link khodi shakyo nahi (PythonAnywhere free plan bahar na sites ne rok che, '
+                                     'athva site e block karyu). Niche "Link thi list na aave to" ni rit vapro.'})
+    lines = []
+    try:
+        _json_lines(json.loads(raw), lines)
+    except ValueError:
+        text = re.sub(r'(?is)<(script|style).*?</\1>', ' ', raw)
+        text = re.sub(r'(?i)</(tr|li|p|div|h\d)>|<br\s*/?>', '\n', text)
+        text = re.sub(r'<[^>]+>', ' ', text).replace('&nbsp;', ' ').replace('&amp;', '&')
+        lines = [', '.join(x for x in (r['company'], r['name'], r['phone'], r['website'], r['email']) if x)
+                 for r in services.parse_lines(text)]
+    if not lines:
+        return JsonResponse({'note': 'Aa link par koi phone number nathi mali. Expo sites ghani vaar list JavaScript thi load kare che; '
+                                     'niche ni rit vapro.'})
+    return JsonResponse({'lines': lines[:2000]})

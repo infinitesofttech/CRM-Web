@@ -17,6 +17,7 @@ urlpatterns = [
     path('calls/<int:pk>/', views.call_history, name='calls'),
     path('import/<str:kind>/', views.import_view, name='import'),
     path('assign/<str:kind>/', views.assign_view, name='assign'),
+    path('fetch-link/', views.fetch_link, name='fetch_link'),
     path('export/<str:kind>/', views.export_csv, name='export'),
     path('<slug:slug>/', views.contact_list, name='list'),
 ]
