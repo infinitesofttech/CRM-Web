@@ -1,32 +1,38 @@
 {% extends 'crm/base.html' %}
 {% block title %}Employees{% endblock %}
 {% block content %}
-<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start">
-  <div class="card" style="grid-column:span 2;min-width:0">
-    <h3 style="margin:0;padding:14px 16px;border-bottom:1px solid var(--line)">Employees ({{ rows|length }})</h3>
+<div class="head" data-reveal>
+  <div><h1>Employees<span class="count-chip">{{ rows|length }}</span></h1>
+    <div class="sub">Calling team - darek ne potana contacts j dekhay che</div></div>
+</div>
+<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(280px,1fr);align-items:start">
+  <div class="card" data-reveal style="min-width:0">
+    <h3 class="section-title"><svg class="i" style="color:var(--brand)"><use href="#i-users"/></svg>Team</h3>
     <div class="scroll"><table>
       <tr><th>Name</th><th>Login</th><th>Assigned</th><th>Called</th><th></th></tr>
-      {% for r in rows %}<tr>
-        <td><b>{{ r.name }}</b></td><td>{{ r.u.username }}</td><td>{{ r.total }}</td><td>{{ r.called }}</td>
+      {% for r in rows %}<tr class="r" style="--i:{{ forloop.counter }}">
+        <td><span class="row" style="flex-wrap:nowrap"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ r.name|slice:":1"|upper }}</span><b>{{ r.name }}</b></span></td>
+        <td class="muted">{{ r.u.username }}</td><td><b>{{ r.total }}</b></td><td>{{ r.called }}</td>
         <td>
           <form method="post" class="row" style="flex-wrap:nowrap">{% csrf_token %}
             <input type="hidden" name="id" value="{{ r.u.id }}">
-            <input name="password" type="password" placeholder="New password" minlength="6" style="width:140px">
+            <input name="password" type="password" placeholder="New password" minlength="6" style="width:150px">
             <button name="action" value="password" class="btn s">Set</button>
-            <button name="action" value="remove" class="btn s d" onclick="return confirm('Remove {{ r.name|escapejs }}? Their contacts become unassigned.')">Remove</button>
+            <button name="action" value="remove" class="btn s d" onclick="return confirm('Remove {{ r.name|escapejs }}? Their contacts become unassigned.')"><svg class="i"><use href="#i-trash"/></svg></button>
           </form>
         </td>
-      </tr>{% empty %}<tr><td colspan="5" class="muted">No employees yet.</td></tr>{% endfor %}
+      </tr>{% empty %}<tr><td colspan="5" class="empty"><svg class="i"><use href="#i-users"/></svg><br>No employees yet.</td></tr>{% endfor %}
     </table></div>
   </div>
-  <form method="post" class="card pad">{% csrf_token %}
-    <h3 style="margin:0 0 4px">Add employee</h3>
+  <form method="post" class="card pad" data-reveal style="--d:1">{% csrf_token %}
+    <h3 style="margin:0 0 2px;font-size:17px;font-weight:800">Add employee</h3>
+    <p class="small muted" style="margin:0">Login details employee ne aapo</p>
     <input type="hidden" name="action" value="create">
     <label>Full name</label><input name="name" required>
     <label>Username (login)</label><input name="username" required>
     <label>Password (min 6)</label><input name="password" type="password" minlength="6" required>
-    <button class="btn p" style="margin-top:12px">Add employee</button>
-    <p class="small muted">Employees see only the contacts assigned to them and can log calls and update status.</p>
+    <button class="btn p" style="margin-top:16px;width:100%"><svg class="i"><use href="#i-plus"/></svg>Add employee</button>
   </form>
 </div>
+<style>@media(max-width:860px){.grid[style*="2fr"]{grid-template-columns:1fr!important}}</style>
 {% endblock %}

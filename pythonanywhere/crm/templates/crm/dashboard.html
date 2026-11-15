@@ -1,43 +1,75 @@
 {% extends 'crm/base.html' %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="grid g4" style="margin-bottom:16px">
-  <div class="card pad stat"><span class="muted">{% if is_admin %}Total contacts{% else %}My contacts{% endif %}</span><b>{{ total }}</b></div>
-  <div class="card pad stat"><span class="muted">Calls today</span><b>{{ calls_today }}</b></div>
-  <div class="card pad stat"><span class="muted">Follow-ups due</span><b>{{ due_count }}</b></div>
-  <div class="card pad stat"><span class="muted">Not called yet</span><b>{{ uncalled }}</b></div>
+<div class="head" data-reveal>
+  <div>
+    <h1>Namaste, {{ user.first_name|default:user.username }} 👋</h1>
+    <div class="sub">{% if is_admin %}Aaje no pura CRM no overview{% else %}Tamara assigned contacts no overview{% endif %}</div>
+  </div>
 </div>
 
-<div class="grid g3" style="margin-bottom:16px">
+<div class="grid g4" style="margin-bottom:18px">
+  <div class="card hover pad stat c1" data-reveal style="--d:0">
+    <div class="ico"><svg class="i"><use href="#i-users"/></svg></div>
+    <span class="lbl">{% if is_admin %}Total contacts{% else %}My contacts{% endif %}</span><b data-count="{{ total }}">{{ total }}</b>
+  </div>
+  <div class="card hover pad stat c2" data-reveal style="--d:1">
+    <div class="ico"><svg class="i"><use href="#i-phone"/></svg></div>
+    <span class="lbl">Calls today</span><b data-count="{{ calls_today }}">{{ calls_today }}</b>
+  </div>
+  <div class="card hover pad stat c3" data-reveal style="--d:2">
+    <div class="ico"><svg class="i"><use href="#i-bell"/></svg></div>
+    <span class="lbl">Follow-ups due</span><b data-count="{{ due_count }}">{{ due_count }}</b>
+  </div>
+  <div class="card hover pad stat c4" data-reveal style="--d:3">
+    <div class="ico"><svg class="i"><use href="#i-clock"/></svg></div>
+    <span class="lbl">Not called yet</span><b data-count="{{ uncalled }}">{{ uncalled }}</b>
+  </div>
+</div>
+
+<div class="grid g3" style="margin-bottom:18px">
   {% for c in cards %}
-  <a class="card pad" href="{% url 'crm:list' c.slug %}" style="color:inherit">
-    <div class="row" style="justify-content:space-between"><b>{{ c.title }}</b><b style="font-size:24px">{{ c.total }}</b></div>
-    <table style="margin-top:8px">
-      {% for s, n in c.rows %}<tr><td style="padding:3px 0;border:0" class="muted">{{ s }}</td><td style="padding:3px 0;border:0;text-align:right"><b>{{ n }}</b></td></tr>{% endfor %}
-    </table>
+  <a class="card pad" href="{% url 'crm:list' c.slug %}" style="color:inherit;--d:{{ forloop.counter0 }}" data-reveal>
+    <div class="row" style="justify-content:space-between">
+      <b style="display:flex;align-items:center;gap:8px;font-size:15px">
+        <svg class="i" style="color:var(--brand)"><use href="#{% if c.slug == 'leads' %}i-lead{% elif c.slug == 'internships' %}i-cap{% else %}i-store{% endif %}"/></svg>{{ c.title }}
+      </b>
+      <b style="font-size:26px;font-weight:800" data-count="{{ c.total }}">{{ c.total }}</b>
+    </div>
+    <div class="bars">
+      {% for s, n in c.rows %}
+      <div class="bar-row"><span>{{ s }}</span><b>{{ n }}</b>
+        <div class="track"><div class="fill" style="--w:{% widthratio n c.total 100 %}%"></div></div></div>
+      {% endfor %}
+    </div>
   </a>
   {% endfor %}
 </div>
 
 {% if due %}
-<div class="card" style="margin-bottom:16px">
-  <h3 style="margin:0;padding:14px 16px;border-bottom:1px solid var(--line)">Follow-ups due</h3>
+<div class="card" style="margin-bottom:18px" data-reveal>
+  <h3 class="section-title"><svg class="i" style="color:var(--warn)"><use href="#i-bell"/></svg>Follow-ups due</h3>
   <div class="scroll"><table>
-    {% for c in due %}<tr>
-      <td><b>{{ c.name|default:c.company|default:"(no name)" }}</b><br><span class="small muted">{{ c.get_kind_display }}</span></td>
-      <td>{{ c.phone }}</td><td>{{ c.status }}</td><td class="muted">{{ c.follow_up }}</td>
+    <tr><th>Contact</th><th>Phone</th><th>Status</th><th>Follow-up</th></tr>
+    {% for c in due %}<tr class="r" style="--i:{{ forloop.counter }}">
+      <td><b>{{ c.company|default:c.name|default:"(no name)" }}</b><br><span class="small muted">{{ c.get_kind_display }}</span></td>
+      <td>{% if c.phone %}<a href="tel:{{ c.phone|cut:' ' }}">{{ c.phone }}</a>{% endif %}</td><td>{{ c.status }}</td><td class="muted">{{ c.follow_up }}</td>
     </tr>{% endfor %}
   </table></div>
 </div>
 {% endif %}
 
 {% if is_admin %}
-<div class="card">
-  <h3 style="margin:0;padding:14px 16px;border-bottom:1px solid var(--line)">Employee workload</h3>
+<div class="card" data-reveal>
+  <h3 class="section-title"><svg class="i" style="color:var(--brand)"><use href="#i-users"/></svg>Employee workload</h3>
   <div class="scroll"><table>
-    <tr><th>Employee</th><th>Assigned</th><th>Called</th><th>Pending</th><th>Calls today</th></tr>
-    {% for w in work %}<tr><td><b>{{ w.name }}</b></td><td>{{ w.total }}</td><td>{{ w.called }}</td><td>{{ w.pending }}</td><td>{{ w.today }}</td></tr>
-    {% empty %}<tr><td colspan="5" class="muted">No employees yet - add them in the Employees tab.</td></tr>{% endfor %}
+    <tr><th>Employee</th><th>Assigned</th><th>Called</th><th>Pending</th><th>Calls today</th><th style="width:28%">Progress</th></tr>
+    {% for w in work %}<tr class="r" style="--i:{{ forloop.counter }}">
+      <td><span class="row" style="flex-wrap:nowrap"><span class="avatar" style="width:30px;height:30px;font-size:12px">{{ w.name|slice:":1"|upper }}</span><b>{{ w.name }}</b></span></td>
+      <td>{{ w.total }}</td><td>{{ w.called }}</td><td>{{ w.pending }}</td><td>{{ w.today }}</td>
+      <td data-reveal><div class="track" style="height:8px"><div class="fill" style="--w:{% widthratio w.called w.total 100 %}%"></div></div></td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="empty"><svg class="i"><use href="#i-users"/></svg><br>No employees yet - add them in the Employees tab.</td></tr>{% endfor %}
   </table></div>
 </div>
 {% endif %}

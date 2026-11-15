@@ -1,18 +1,30 @@
 {% extends 'crm/base.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
-<div style="max-width:360px;margin:12vh auto 0">
-  <form method="post" class="card pad">
-    {% csrf_token %}
-    <h1 style="margin:0;font-size:20px">Infinite Soft Tech CRM</h1>
-    <p class="muted" style="margin:2px 0 8px">Sign in to continue</p>
-    {% if form.errors %}<div class="msg error">Wrong username or password.</div>{% endif %}
-    <input type="hidden" name="next" value="{{ next }}">
-    <label>Username</label>
-    <input name="username" autocomplete="username" autofocus required>
-    <label>Password</label>
-    <input name="password" type="password" autocomplete="current-password" required>
-    <button class="btn p" style="width:100%;justify-content:center;margin-top:14px">Sign in</button>
-  </form>
-</div>
+<style>
+  body{background:#0b1026}
+  body::before{background:radial-gradient(700px 500px at 15% 10%,rgba(43,68,255,.55),transparent 65%),
+    radial-gradient(600px 460px at 85% 20%,rgba(236,72,153,.40),transparent 65%),
+    radial-gradient(700px 520px at 50% 100%,rgba(124,58,237,.50),transparent 65%);animation:drift 14s ease-in-out infinite alternate}
+  @keyframes drift{from{transform:scale(1) translate(0,0)}to{transform:scale(1.12) translate(-2%,2%)}}
+  .login{max-width:400px;margin:11vh auto 0;background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.6);
+    border-radius:22px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:pop .6s cubic-bezier(.22,1,.36,1) both}
+  .login .logo{width:48px;height:48px;font-size:22px;border-radius:14px;margin-bottom:14px}
+  .login h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.4px}
+  .foot{text-align:center;color:rgba(255,255,255,.6);font-size:12px;margin-top:18px}
+</style>
+<form method="post" class="login">
+  {% csrf_token %}
+  <span class="logo">∞</span>
+  <h1>Welcome back</h1>
+  <p class="muted" style="margin:4px 0 10px">Infinite Soft Tech CRM ma sign in karo</p>
+  {% if form.errors %}<div class="msg error">Wrong username or password.</div>{% endif %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <label>Username</label>
+  <input name="username" autocomplete="username" autofocus required>
+  <label>Password</label>
+  <input name="password" type="password" autocomplete="current-password" required>
+  <button class="btn p" style="width:100%;margin-top:18px;padding:12px">Sign in</button>
+</form>
+<p class="foot">© Infinite Soft Tech</p>
 {% endblock %}
